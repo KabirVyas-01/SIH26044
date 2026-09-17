@@ -1,7 +1,15 @@
 We are a demo website for our sih online round.
 
-our problem statement is Portal for acedmia-industry collaboration with skill mapping, internship and placement.
+our problem statement is Portal for acedmia-industry collaboration with skill mapping, internship and placement
 
 we want our website to be fully error free, all files already linked so that we can just copy paste the code and save and run to get output.
 
-we need a very good attractive frontend(since its a portal for acedmia , so no need to use cartoonish effects , keep it simple ,with good colour pallete choice of )
+we need a very good attractive frontend(since its a portal for acedmia , so no need to use cartoonish effects , keep it simple ,with good colour pallete choice of 3-4 standard decent colour giving vision feel of safety, authenticity)
+
+we thought to design full frontend using html, tailwind css , javascript, react ,and something else we are missing.
+
+we also want a backend,that works smoothly without any error, can handle all operations of all features available in website.
+also it should be scalable, also  such that even when bulk of users try to enter at same time , it should not show its limits
+
+we want to include a small database which consists of 2-3 example data , which will help us to show and explain all features of our website 
+
