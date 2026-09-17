@@ -1,0 +1,7 @@
+We are a demo website for our sih online round.
+
+our problem statement is Portal for acedmia-industry collaboration with skill mapping, internship and placement.
+
+we want our website to be fully error free, all files already linked so that we can just copy paste the code and save and run to get output.
+
+we need a very good attractive frontend(since its a portal for acedmia , so no need to use cartoonish effects , keep it simple ,with good colour pallete choice of )
