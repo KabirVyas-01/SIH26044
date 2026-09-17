@@ -1,4 +1,4 @@
-We are a demo website for our sih online round.
+We want to make a demo website for our sih online round.
 
 our problem statement is Portal for acedmia-industry collaboration with skill mapping, internship and placement
 
