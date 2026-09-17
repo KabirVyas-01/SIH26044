@@ -21,7 +21,9 @@ for Api communication we thought to use Rest API and json.and jwt for authentica
 
 Tell how will your workflow execute.we want to build it step by step , like you ask for specific data and we provide it , you tell improvement suggestions and uniqueness ideas in each and every feature.tell us if we have any upsetting feature in our site , that would create hinderance for judges to love our site
 
-we want to make your project idea extremely unique and attractive, and
+we want to make your project idea extremely unique and attractive, 
+
+for now i just want to make backend completely (frontend will be done by others) , so help me execute that step by step.one step at a time . you ask me what details and info is needed , then i will provide you that info, then we will progress 
 
 
 
