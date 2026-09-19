@@ -1,5 +1,6 @@
 import os
 from flask import Flask, jsonify
+from flask_cors import CORS
 from config import Config
 from models import init_db
 
@@ -14,6 +15,13 @@ def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
 
+    CORS(app, supports_credentials=True, origins=[
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:5173"
+    ])
+    
     # Initialize the SQLite tables
     init_db()
 
