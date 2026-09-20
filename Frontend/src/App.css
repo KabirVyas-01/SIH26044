@@ -1,0 +1,30 @@
+/* App.css - Portal Shell & Component Specific Theme Overrides */
+
+.portal-shell {
+  --bg: #F2E8CF;
+  --surface: #FFFFFF;
+  --text: #2C3524;
+  --text-muted: #6B7660;
+  --border: #E1D6AE;
+}
+
+.portal-shell main {
+  min-height: calc(100vh - 4rem);
+}
+
+.card-hover-effect {
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.card-hover-effect:hover {
+  border-color: rgba(49, 56, 81, 0.3);
+}
+
+.status-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border-radius: 9999px;
+  font-weight: 500;
+  line-height: 1;
+}

@@ -1,0 +1,147 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  --bg: #F6F3ED;
+  --surface: #FFFFFF;
+  --text: #23263A;
+  --text-muted: #5B5F76;
+  --border: #DDE1E6;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+*, *::before, *::after {
+  box-sizing: inherit;
+}
+
+html {
+  scroll-padding-top: env(safe-area-inset-top, 0px);
+  scroll-behavior: smooth;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #1B1D28;
+    --surface: #24273A;
+    --text: #EDEEF3;
+    --text-muted: #A6A9BC;
+    --border: #383B52;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #1B1D28;
+  --surface: #24273A;
+  --text: #EDEEF3;
+  --text-muted: #A6A9BC;
+  --border: #383B52;
+}
+
+html, body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Manrope', ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  min-height: 100%;
+}
+
+::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(120, 120, 120, 0.35);
+  border-radius: 8px;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.hscroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.rise {
+  animation: rise 0.55s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+@keyframes growbar {
+  from {
+    width: 0%;
+  }
+}
+
+.growbar {
+  animation: growbar 1s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+@keyframes flowmove {
+  0% {
+    stroke-dashoffset: 24;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+.flowline {
+  stroke-dasharray: 6 6;
+  animation: flowmove 1.2s linear infinite;
+}
+
+.focus-ring:focus-visible {
+  outline: 2px solid #313851;
+  outline-offset: 2px;
+}
+
+.font-display {
+  font-family: 'Fraunces', ui-serif, Georgia, serif;
+}
+
+input, select, textarea, button {
+  font-family: inherit;
+}
+
+input, select, textarea {
+  color: #111827;
+  background-color: #FFFFFF;
+}
+
+input::placeholder, textarea::placeholder {
+  color: #9CA3AF;
+}
