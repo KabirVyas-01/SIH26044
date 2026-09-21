@@ -10,6 +10,14 @@ def row_to_dict(row):
         return None
     return {k: row[k] for k in row.keys()}
 
+@institute_bp.route('/list', methods=['GET'])
+def get_public_institutes_list():
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, name, admin_tpo_contact FROM institutes ORDER BY name ASC")
+    institutes = [row_to_dict(r) for r in cursor.fetchall()]
+    conn.close()
+    return jsonify({'institutes': institutes}), 200
 @institute_bp.route('/verifications/pending', methods=['GET'])
 @role_required('institute')
 def get_pending_verifications():

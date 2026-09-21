@@ -20,9 +20,7 @@ def clear_user_session():
 
 def get_current_user():
   if 'user_id' in session and 'role' in session:
-    return{
-      'user_id': session['user_id'], 'role': session['role'], 'email':session.get('email'), 'name': session.get('name')
-    }
+    return {'id': session['user_id'], 'user_id': session['user_id'], 'role': session['role'], 'email': session.get('email'), 'name': session.get('name')}
   return None
 
 def login_required(f):

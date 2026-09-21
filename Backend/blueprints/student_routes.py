@@ -23,7 +23,7 @@ def get_profile():
         """
         SELECT id, name, email, college, skills, github_url, leetcode_url, 
         codeforces_url, resume_url, prior_experience, university_roll_no, 
-        verification_status, verified_at, created_at
+        verification_status, verified_at, created_at, institute_id
         FROM students 
         WHERE id = ?
         """,
@@ -37,9 +37,10 @@ def get_profile():
 
     conn.close()
 
-    profile['is_verified'] = (profile.get('verification_status') == 'verified')
-    profile['documents'] = documents
-    profile['verified_skills'] = skills
+    if profile:
+        profile['is_verified'] = (profile.get('verification_status') == 'verified')
+        profile['documents'] = documents
+        profile['verified_skills'] = skills
 
     return jsonify({'profile': profile}), 200
 
@@ -48,7 +49,7 @@ def get_profile():
 def update_profile():
     student_id = session['user_id']
     data = request.get_json() or {}
-    fields = ['college', 'skills', 'github_url', 'leetcode_url', 'codeforces_url', 'resume_url', 'prior_experience', 'university_roll_no']
+    fields = ['college', 'skills', 'github_url', 'leetcode_url', 'codeforces_url', 'resume_url', 'prior_experience', 'university_roll_no', 'institute_id']
     updates = {}
     for f in fields:
         if f in data:
@@ -99,7 +100,7 @@ def upload_document():
 @student_bp.route('/postings', methods=['GET'])
 @role_required('student')
 def browse_postings():
-    """Look at all opportunities using an SQL JOIN to fetch the company name!"""
+    """Look at all opportunities using an SQL JOIN to fetch company and professor names!"""
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute(
@@ -206,3 +207,34 @@ def get_job_course_recommendations(posting_id):
     student_id = session['user_id']
     result = gemini_service.get_or_generate_courses(student_id, posting_id)
     return jsonify(result), 200
+
+# =========================================================================
+# AI TOOLS ENDPOINTS
+# =========================================================================
+
+@student_bp.route('/ai/resume-analyzer', methods=['POST'])
+@role_required('student')
+def ai_resume_analyzer():
+    data = request.get_json() or {}
+    resume_text = data.get('resume_text', '').strip()
+    target_role = data.get('target_role', 'Software Engineer').strip()
+    if not resume_text:
+        return jsonify({'error': 'Please provide resume text or skills to analyze.'}), 400
+    result = gemini_service.analyze_resume(resume_text, target_role)
+    return jsonify(result), 200
+
+@student_bp.route('/ai/roadmap-generator', methods=['POST'])
+@role_required('student')
+def ai_roadmap_generator():
+    data = request.get_json() or {}
+    target_role = data.get('target_role', 'Full Stack Developer').strip()
+    roadmap = gemini_service.generate_career_roadmap(target_role)
+    return jsonify({'target_role': target_role, 'roadmap': roadmap}), 200
+
+@student_bp.route('/ai/interview-prep', methods=['POST'])
+@role_required('student')
+def ai_interview_prep():
+    data = request.get_json() or {}
+    skill = data.get('skill', 'Python').strip()
+    questions = gemini_service.generate_mock_interview(skill)
+    return jsonify({'skill': skill, 'questions': questions}), 200
