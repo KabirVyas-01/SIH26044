@@ -283,7 +283,7 @@ DEMO_DOMAINS = {'example.com', 'test.com', 'demo.com', 'sample.com', 'college.ed
 def send_real_email_otp(to_email: str, otp_code: str) -> bool:
     """Attempts to dispatch an actual email via SMTP if credentials are configured."""
     smtp_email = getattr(Config, 'SMTP_EMAIL', '')
-    smtp_password = getattr(Config, 'SMTP_PASSWORD', '')
+    smtp_password = getattr(Config, 'SMTP_PASSWORD', '').replace(' ', '')
     smtp_server = getattr(Config, 'SMTP_SERVER', 'smtp.gmail.com')
     smtp_port = int(getattr(Config, 'SMTP_PORT', 587))
 
