@@ -31,13 +31,25 @@ def student_signup():
 
     conn = get_db()
     cursor = conn.cursor()
+
+    # Validate institute_id exists in institutes table, otherwise set to None
+    valid_institute_id = None
+    if institute_id:
+        try:
+            inst_num = int(institute_id)
+            cursor.execute("SELECT id FROM institutes WHERE id = ?", (inst_num,))
+            if cursor.fetchone():
+                valid_institute_id = inst_num
+        except (ValueError, TypeError):
+            valid_institute_id = None
+
     try:
         cursor.execute(
             """
             INSERT INTO students (name, email, password_hash, college, skills, university_roll_no, institute_id)
             VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
-            (name, email, pwd_hash, college, skills, university_roll_no, institute_id)
+            (name, email, pwd_hash, college, skills, university_roll_no, valid_institute_id)
         )
         conn.commit()
         student_id = cursor.lastrowid
@@ -214,10 +226,21 @@ def academician_signup():
     pwd_hash = hash_password(password)
     conn = get_db()
     cursor = conn.cursor()
+
+    valid_institute_id = None
+    if institute_id:
+        try:
+            inst_num = int(institute_id)
+            cursor.execute("SELECT id FROM institutes WHERE id = ?", (inst_num,))
+            if cursor.fetchone():
+                valid_institute_id = inst_num
+        except (ValueError, TypeError):
+            valid_institute_id = None
+
     try:
         cursor.execute(
             "INSERT INTO academicians (name, email, password_hash, institute_id, expertise_domain) VALUES (?, ?, ?, ?, ?)",
-            (name, email, pwd_hash, institute_id, expertise_domain)
+            (name, email, pwd_hash, valid_institute_id, expertise_domain)
         )
         conn.commit()
         academician_id = cursor.lastrowid

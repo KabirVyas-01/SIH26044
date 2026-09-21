@@ -50,6 +50,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose, setMode, on
         if (res && res.institutes && res.institutes.length > 0) {
           setInstitutes(res.institutes);
           setSelectedInstituteId(String(res.institutes[0].id));
+        } else {
+          setInstitutes([{ id: 1, name: 'The Maharaja Sayajirao University of Baroda' }]);
+          setSelectedInstituteId('1');
         }
       } catch {
         setInstitutes([{ id: 1, name: 'The Maharaja Sayajirao University of Baroda' }]);

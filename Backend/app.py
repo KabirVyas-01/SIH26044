@@ -24,8 +24,13 @@ def create_app():
         "http://localhost:5174"
     ])
 
-    # Initialize the SQLite tables
+    # Initialize the SQLite tables and ensure default seed data exists
     init_db()
+    try:
+        from seed_data import seed
+        seed()
+    except Exception as e:
+        print(f"[Seed Warning] Auto-seeding skipped: {e}")
 
     # Register all 5 stakeholder blueprints
     app.register_blueprint(auth_bp)
