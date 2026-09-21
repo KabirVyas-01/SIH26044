@@ -98,6 +98,7 @@ export const PortalShell: React.FC<PortalShellProps> = ({
               <button
                 onClick={async () => {
                   await logout();
+                  window.location.hash = '';
                   go('landing');
                 }}
                 className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white/10 text-pcream hover:bg-rose-700/80 transition"
@@ -157,6 +158,7 @@ export const PortalShell: React.FC<PortalShellProps> = ({
                         onClick={async () => {
                           await logout();
                           setUserMenuOpen(false);
+                          window.location.hash = '';
                           go('landing');
                         }}
                         className="w-full text-left px-3 py-2 text-xs text-rose-700 hover:bg-rose-50 rounded-lg mt-1 font-medium transition"

@@ -31,4 +31,8 @@ export const instituteApi = {
   }> {
     return request('/api/institute/analytics/skill-demand');
   },
+
+  async getInstitutesList(): Promise<{ institutes: { id: number; name: string; admin_tpo_contact: string }[] }> {
+    return request('/api/institute/list');
+  },
 };

@@ -7,7 +7,7 @@ import { StudentAITools, StudentField } from './StudentAITools';
 import { StudentOpportunities } from './StudentOpportunities';
 import { StudentProjects } from './StudentProjects';
 import { StudentProfile } from './StudentProfile';
-import { STUDENTS } from '../../data/mockData';
+import { SkillTestModal } from './SkillTestModal';
 import { Student } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { studentApi } from '../../api/student';
@@ -27,7 +27,28 @@ const STUDENT_TABS = [
 export const StudentPortal: React.FC<{ go: (page: string) => void }> = ({ go }) => {
   const [active, setActive] = useState('overview');
   const { currentUser } = useAuth();
-  const [student, setStudent] = useState<Student>(STUDENTS[0]);
+
+  // Fresh, clean initial state for newly registered students (Zero fake mock data!)
+  const [student, setStudent] = useState<Student>({
+    id: currentUser?.id || 'new',
+    name: currentUser?.name || 'Student',
+    university: currentUser?.college || 'University',
+    field: 'Computer Science & Engineering',
+    role: 'Full Stack Developer',
+    resumeScore: 0,
+    potential: 40,
+    discipline: 50,
+    punctuality: 50,
+    consistency: 50,
+    weeklyImprovement: 0,
+    verified: false,
+    resumeHistory: [0],
+    dailyLog: [],
+    projects: [],
+    skills: [], // Starts truly empty!
+  });
+
+  const [onboardingSkill, setOnboardingSkill] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchRealProfile = async () => {
@@ -36,19 +57,32 @@ export const StudentPortal: React.FC<{ go: (page: string) => void }> = ({ go }) 
           const res = await studentApi.getProfile();
           if (res && res.profile) {
             const p = res.profile;
+            const realSkills = (p.verified_skills || []).map((s: any) => ({
+              name: s.skill_name,
+              score: Math.round(s.percentage),
+              min: 70,
+            }));
+
+            // Calculate real resume score out of 10 based on actual verified skills
+            const realResumeScore =
+              realSkills.length > 0
+                ? +(Math.min(10, 4.0 + realSkills.length * 1.5)).toFixed(1)
+                : 0;
+
+            const realPotential =
+              realSkills.length > 0
+                ? Math.min(100, 50 + realSkills.length * 12)
+                : 40;
+
             setStudent((prev) => ({
               ...prev,
               id: p.id,
-              name: p.name || prev.name,
+              name: p.name || currentUser.name || prev.name,
               university: p.college || prev.university,
-              verified: p.is_verified,
-              skills: p.verified_skills && p.verified_skills.length > 0
-                ? p.verified_skills.map((s: any) => ({
-                    name: s.skill_name,
-                    score: Math.round(s.percentage),
-                    min: 70,
-                  }))
-                : prev.skills,
+              verified: p.is_verified || false,
+              skills: realSkills, // Empty [] if new student, real skills if tests taken!
+              resumeScore: realResumeScore,
+              potential: realPotential,
             }));
           }
         } catch {
@@ -69,11 +103,15 @@ export const StudentPortal: React.FC<{ go: (page: string) => void }> = ({ go }) 
           )
         : [...prev.skills, { name: skillName, score, min: 70 }];
 
+      const newResumeScore = +(Math.min(10, 4.0 + updatedSkills.length * 1.5)).toFixed(1);
+      const newPotential = Math.min(100, 50 + updatedSkills.length * 12);
+
       return {
         ...prev,
         skills: updatedSkills,
-        resumeScore: Math.min(10, +(prev.resumeScore + 0.3).toFixed(1)),
-        potential: Math.min(100, prev.potential + 2),
+        resumeScore: newResumeScore,
+        potential: newPotential,
+        verified: true,
       };
     });
   };
@@ -114,9 +152,38 @@ export const StudentPortal: React.FC<{ go: (page: string) => void }> = ({ go }) 
       active={active}
       setActive={setActive}
       go={go}
-      subtitle={student.name}
+      subtitle={student.university}
     >
+      {/* Onboarding Banner for New Students with 0 Verified Skills */}
+      {student.skills.length === 0 && (
+        <div className="mb-6 p-4 rounded-2xl bg-amber-50 border border-amber-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div>
+            <div className="text-sm font-semibold text-amber-900">
+              ⚡ Action Required: Complete your Initial Skill Assessment
+            </div>
+            <p className="text-xs text-amber-700 mt-0.5">
+              Your profile currently has 0 verified skills. Take your first 5-question test to earn your verified badge and calculate your real resume score!
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setOnboardingSkill('Python')}
+            className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold shrink-0 shadow-sm"
+          >
+            Start Python Assessment →
+          </button>
+        </div>
+      )}
+
       {renderView()}
+
+      {/* Quick Launch Assessment Modal */}
+      <SkillTestModal
+        open={!!onboardingSkill}
+        skill={onboardingSkill || 'Python'}
+        onClose={() => setOnboardingSkill(null)}
+        onSuccess={handleUpdateSkill}
+      />
     </PortalShell>
   );
 };

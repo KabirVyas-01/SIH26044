@@ -39,4 +39,18 @@ export const authApi = {
   async logout(): Promise<{ message: string }> {
     return request('/api/auth/logout', { method: 'POST' });
   },
+
+  async sendOtp(email: string): Promise<{ message: string; demo_otp?: string }> {
+    return request('/api/auth/send-otp', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  },
+
+  async verifyOtp(email: string, otp: string): Promise<{ message: string }> {
+    return request('/api/auth/verify-otp', {
+      method: 'POST',
+      body: JSON.stringify({ email, otp }),
+    });
+  },
 };

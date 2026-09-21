@@ -19,12 +19,21 @@ function MainContent() {
     : null;
 
   const go = (p: string) => {
-    if (userPortal) {
-      // Logged in: stay in own portal only
-      setPage(userPortal);
+    if (p === 'landing') {
+      window.location.hash = '';
+      setPage('landing');
+      window.scrollTo(0, 0);
+      return;
+    }
+
+    if (currentUser) {
+      const allowed = currentUser.role === 'institute' ? 'university' : currentUser.role;
+      setPage(allowed);
     } else {
-      // Logged out / visitor: free navigation across all 4 portals
-      setPage(p);
+      // Unauthenticated users are redirected to landing with login modal
+      window.location.hash = '';
+      setPage('landing');
+      setAuthMode('login');
     }
     window.scrollTo(0, 0);
   };
@@ -35,6 +44,7 @@ function MainContent() {
       const allowed = currentUser.role === 'institute' ? 'university' : currentUser.role;
       setPage(allowed);
     } else {
+      window.location.hash = '';
       setPage('landing');
     }
   }, [currentUser]);
@@ -59,12 +69,9 @@ function MainContent() {
         const allowed = currentUser.role === 'institute' ? 'university' : currentUser.role;
         setPage(allowed);
       } else {
-        const h = window.location.hash.replace('#', '');
-        if (['student', 'academician', 'university', 'industry'].includes(h)) {
-          setPage(h);
-        } else {
-          setPage('landing');
-        }
+        // Logged-out users cannot access portals by typing hash URLs
+        window.location.hash = '';
+        setPage('landing');
       }
     };
     applyHash();

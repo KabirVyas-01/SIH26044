@@ -8,6 +8,20 @@ export interface User {
   college?: string;
   university_roll_no?: string;
   expertise_domain?: string;
+  qualification?: string;
+  desired_role?: string;
+  skills?: string;
+  resume_url?: string;
+  prior_experience?: string;
+  github_url?: string;
+  leetcode_url?: string;
+  industry_domain?: string;
+  city?: string;
+  website_url?: string;
+  contact_person?: string;
+  admin_tpo_contact?: string;
+  department?: string;
+  profile_url?: string;
 }
 
 export interface SkillItem {
@@ -46,6 +60,13 @@ export interface Student {
   dailyLog: DailyLogItem[];
   projects: ProjectItem[];
   skills: SkillItem[];
+  qualification?: string;
+  desiredRole?: string;
+  resumeUrl?: string;
+  priorExperience?: string;
+  githubUrl?: string;
+  leetcodeUrl?: string;
+  universityRollNo?: string;
 }
 
 export interface University {

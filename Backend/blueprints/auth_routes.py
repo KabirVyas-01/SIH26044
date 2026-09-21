@@ -37,7 +37,7 @@ def student_signup():
             INSERT INTO students (name, email, password_hash, college, skills, university_roll_no, institute_id)
             VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
-            (name, email, pwd_hash, college, skills, university_roll_no)
+            (name, email, pwd_hash, college, skills, university_roll_no, institute_id)
         )
         conn.commit()
         student_id = cursor.lastrowid

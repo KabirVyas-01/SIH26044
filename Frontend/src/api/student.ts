@@ -52,4 +52,25 @@ export const studentApi = {
   async getJobCourseRecommendations(postingId: number): Promise<any> {
     return request(`/api/student/postings/${postingId}/recommendations`);
   },
+
+  async analyzeResume(resumeText: string, targetRole: string = 'Software Engineer'): Promise<any> {
+    return request('/api/student/ai/resume-analyzer', {
+      method: 'POST',
+      body: JSON.stringify({ resume_text: resumeText, target_role: targetRole }),
+    });
+  },
+
+  async generateRoadmap(targetRole: string = 'Full Stack Developer'): Promise<any> {
+    return request('/api/student/ai/roadmap-generator', {
+      method: 'POST',
+      body: JSON.stringify({ target_role: targetRole }),
+    });
+  },
+
+  async getInterviewQuestions(skill: string = 'Python'): Promise<any> {
+    return request('/api/student/ai/interview-prep', {
+      method: 'POST',
+      body: JSON.stringify({ skill }),
+    });
+  },
 };

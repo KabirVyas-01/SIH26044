@@ -11,7 +11,13 @@ export const StudentProfile: React.FC<{
 }> = ({ student, onUpdateProfile }) => {
   const [editing, setEditing] = useState(false);
   const [college, setCollege] = useState(student.university);
-  const [targetRole, setTargetRole] = useState(student.role);
+  const [targetRole, setTargetRole] = useState(student.desiredRole || student.role);
+  const [qualification, setQualification] = useState(student.qualification || student.field || '');
+  const [universityRollNo, setUniversityRollNo] = useState(student.universityRollNo || '');
+  const [resumeUrl, setResumeUrl] = useState(student.resumeUrl || '');
+  const [priorExperience, setPriorExperience] = useState(student.priorExperience || '');
+  const [githubUrl, setGithubUrl] = useState(student.githubUrl || '');
+  const [leetcodeUrl, setLeetcodeUrl] = useState(student.leetcodeUrl || '');
   const [skillsStr, setSkillsStr] = useState(student.skills.map((s) => s.name).join(', '));
   const { currentUser } = useAuth();
 
@@ -20,6 +26,13 @@ export const StudentProfile: React.FC<{
       try {
         await studentApi.updateProfile({
           college,
+          desired_role: targetRole,
+          qualification,
+          university_roll_no: universityRollNo,
+          resume_url: resumeUrl,
+          prior_experience: priorExperience,
+          github_url: githubUrl,
+          leetcode_url: leetcodeUrl,
           skills: skillsStr,
         });
       } catch {
@@ -30,6 +43,14 @@ export const StudentProfile: React.FC<{
       onUpdateProfile({
         university: college,
         role: targetRole,
+        desiredRole: targetRole,
+        field: qualification,
+        qualification,
+        universityRollNo,
+        resumeUrl,
+        priorExperience,
+        githubUrl,
+        leetcodeUrl,
       });
     }
     setEditing(false);
@@ -39,7 +60,7 @@ export const StudentProfile: React.FC<{
     <div className="space-y-6">
       <PageHeader
         title="Your profile"
-        desc="What universities and industries see about your growth."
+        desc="What universities and industries see about your growth and qualifications."
       />
       <Card className="p-6">
         <div className="flex items-start gap-4 flex-wrap">
@@ -52,9 +73,48 @@ export const StudentProfile: React.FC<{
               {student.verified && <VerifiedBadge small />}
             </div>
             <div className="text-sm text-[var(--text-muted)]">{student.university}</div>
+            {student.universityRollNo && (
+              <div className="text-xs text-[var(--text-muted)] mt-0.5 font-mono">
+                Roll No: {student.universityRollNo}
+              </div>
+            )}
             <div className="flex flex-wrap gap-1.5 mt-2">
-              <Tag>{student.field}</Tag>
-              <Tag tone="blue">Target: {student.role}</Tag>
+              <Tag>{student.qualification || student.field}</Tag>
+              <Tag tone="blue">Target: {student.desiredRole || student.role}</Tag>
+            </div>
+
+            {/* Profile & Portfolio Links */}
+            <div className="flex flex-wrap items-center gap-3 mt-3 pt-3 border-t border-[var(--border)] text-xs font-semibold">
+              {student.resumeUrl && (
+                <a
+                  href={student.resumeUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 text-sagedeep hover:underline"
+                >
+                  📄 View Resume ↗
+                </a>
+              )}
+              {student.githubUrl && (
+                <a
+                  href={student.githubUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 text-deepblue hover:underline"
+                >
+                  💻 GitHub Profile ↗
+                </a>
+              )}
+              {student.leetcodeUrl && (
+                <a
+                  href={student.leetcodeUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 text-amber-700 hover:underline"
+                >
+                  ⚡ LeetCode Profile ↗
+                </a>
+              )}
             </div>
           </div>
           <Button
@@ -64,6 +124,33 @@ export const StudentProfile: React.FC<{
           >
             Edit profile
           </Button>
+        </div>
+      </Card>
+
+      {/* Qualifications & Experience Block */}
+      <Card className="p-5">
+        <div className="font-display font-semibold mb-3">Education & Experience Summary</div>
+        <div className="grid sm:grid-cols-2 gap-4 text-xs">
+          <div className="space-y-1">
+            <span className="font-semibold text-[var(--text-muted)] uppercase tracking-wider text-[10px]">
+              Educational Qualification
+            </span>
+            <p className="text-sm font-medium">{student.qualification || 'Not specified'}</p>
+          </div>
+          <div className="space-y-1">
+            <span className="font-semibold text-[var(--text-muted)] uppercase tracking-wider text-[10px]">
+              Desired Career Role
+            </span>
+            <p className="text-sm font-medium">{student.desiredRole || student.role}</p>
+          </div>
+          <div className="sm:col-span-2 space-y-1 pt-2 border-t border-[var(--border)]">
+            <span className="font-semibold text-[var(--text-muted)] uppercase tracking-wider text-[10px]">
+              Prior Experience, Internships & Projects
+            </span>
+            <p className="text-sm leading-relaxed text-[var(--text-muted)]">
+              {student.priorExperience || 'No prior experience details provided.'}
+            </p>
+          </div>
         </div>
       </Card>
 
@@ -99,30 +186,84 @@ export const StudentProfile: React.FC<{
         </Card>
       </div>
 
-      <Modal open={editing} onClose={() => setEditing(false)} title="Edit Profile">
+      <Modal open={editing} onClose={() => setEditing(false)} wide={true} title="Edit Profile">
         <div className="space-y-3">
-          <div>
-            <label className="text-xs font-semibold text-[var(--text-muted)]">College / University</label>
-            <input
-              value={college}
-              onChange={(e) => setCollege(e.target.value)}
-              className="w-full mt-1 rounded-xl border border-[var(--border)] px-3 py-2 text-sm focus-ring"
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-[var(--text-muted)]">College / University</label>
+              <input
+                value={college}
+                onChange={(e) => setCollege(e.target.value)}
+                className="w-full mt-1 rounded-xl border border-[var(--border)] px-3 py-2 text-sm focus-ring bg-white text-black placeholder-gray-400"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-[var(--text-muted)]">University Roll No.</label>
+              <input
+                value={universityRollNo}
+                onChange={(e) => setUniversityRollNo(e.target.value)}
+                className="w-full mt-1 rounded-xl border border-[var(--border)] px-3 py-2 text-sm focus-ring bg-white text-black placeholder-gray-400"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-[var(--text-muted)]">Educational Qualification</label>
+              <input
+                value={qualification}
+                onChange={(e) => setQualification(e.target.value)}
+                className="w-full mt-1 rounded-xl border border-[var(--border)] px-3 py-2 text-sm focus-ring bg-white text-black placeholder-gray-400"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-[var(--text-muted)]">Target / Desired Role</label>
+              <input
+                value={targetRole}
+                onChange={(e) => setTargetRole(e.target.value)}
+                className="w-full mt-1 rounded-xl border border-[var(--border)] px-3 py-2 text-sm focus-ring bg-white text-black placeholder-gray-400"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-[var(--text-muted)]">Resume URL / Link</label>
+              <input
+                type="url"
+                value={resumeUrl}
+                onChange={(e) => setResumeUrl(e.target.value)}
+                className="w-full mt-1 rounded-xl border border-[var(--border)] px-3 py-2 text-sm focus-ring bg-white text-black placeholder-gray-400"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-[var(--text-muted)]">Skills (comma separated)</label>
+              <input
+                value={skillsStr}
+                onChange={(e) => setSkillsStr(e.target.value)}
+                className="w-full mt-1 rounded-xl border border-[var(--border)] px-3 py-2 text-sm focus-ring bg-white text-black placeholder-gray-400"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-[var(--text-muted)]">GitHub Profile URL</label>
+              <input
+                type="url"
+                value={githubUrl}
+                onChange={(e) => setGithubUrl(e.target.value)}
+                className="w-full mt-1 rounded-xl border border-[var(--border)] px-3 py-2 text-sm focus-ring bg-white text-black placeholder-gray-400"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-[var(--text-muted)]">LeetCode Profile URL</label>
+              <input
+                type="url"
+                value={leetcodeUrl}
+                onChange={(e) => setLeetcodeUrl(e.target.value)}
+                className="w-full mt-1 rounded-xl border border-[var(--border)] px-3 py-2 text-sm focus-ring bg-white text-black placeholder-gray-400"
+              />
+            </div>
           </div>
           <div>
-            <label className="text-xs font-semibold text-[var(--text-muted)]">Target Role</label>
-            <input
-              value={targetRole}
-              onChange={(e) => setTargetRole(e.target.value)}
-              className="w-full mt-1 rounded-xl border border-[var(--border)] px-3 py-2 text-sm focus-ring"
-            />
-          </div>
-          <div>
-            <label className="text-xs font-semibold text-[var(--text-muted)]">Skills (comma separated)</label>
-            <input
-              value={skillsStr}
-              onChange={(e) => setSkillsStr(e.target.value)}
-              className="w-full mt-1 rounded-xl border border-[var(--border)] px-3 py-2 text-sm focus-ring"
+            <label className="text-xs font-semibold text-[var(--text-muted)]">Prior Experience & Projects</label>
+            <textarea
+              rows={2}
+              value={priorExperience}
+              onChange={(e) => setPriorExperience(e.target.value)}
+              className="w-full mt-1 rounded-xl border border-[var(--border)] px-3 py-2 text-sm focus-ring bg-white text-black placeholder-gray-400"
             />
           </div>
           <Button variant="primary" className="w-full mt-2" onClick={handleSave}>
