@@ -36,10 +36,10 @@ export const StudentPortal: React.FC<{ go: (page: string) => void }> = ({ go }) 
     field: 'Computer Science & Engineering',
     role: 'Full Stack Developer',
     resumeScore: 0,
-    potential: 40,
-    discipline: 50,
-    punctuality: 50,
-    consistency: 50,
+    potential: 0,
+    discipline: 0,
+    punctuality: 0,
+    consistency: 0,
     weeklyImprovement: 0,
     verified: false,
     resumeHistory: [0],
@@ -72,7 +72,7 @@ export const StudentPortal: React.FC<{ go: (page: string) => void }> = ({ go }) 
             const realPotential =
               realSkills.length > 0
                 ? Math.min(100, 50 + realSkills.length * 12)
-                : 40;
+                : 0;
 
             setStudent((prev) => ({
               ...prev,

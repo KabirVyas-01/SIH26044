@@ -58,20 +58,32 @@ export const StudentOverview: React.FC<{ student: Student }> = ({ student }) => 
   return (
     <div className="space-y-6">
       <PageHeader
-        title={`Welcome back, ${student.name.split(' ')[0]}`}
-        desc={`Tracking your path toward ${student.role}.`}
+        title={student.skills.length > 0 ? `Welcome back, ${student.name.split(' ')[0]}` : `Welcome, ${student.name.split(' ')[0]}!`}
+        desc={student.skills.length > 0 ? `Tracking your path toward ${student.role}.` : `Let's start by taking your initial skill test to calculate your verified score.`}
         action={student.verified ? <VerifiedBadge /> : undefined}
       />
 
       <div className="grid sm:grid-cols-4 gap-3">
         <StatBlock
           label="Resume score"
-          value={student.resumeScore + "/10"}
-          sub={"+" + improvement + " since joining"}
+          value={student.resumeScore > 0 ? `${student.resumeScore}/10` : 'Pending'}
+          sub={student.resumeScore > 0 ? `+${improvement} since joining` : 'Take assessment to calculate'}
         />
-        <StatBlock label="Weekly improvement" value={"+" + student.weeklyImprovement + "%"} />
-        <StatBlock label="Potential" value={student.potential + "/100"} />
-        <StatBlock label="Consistency" value={student.consistency + "/100"} />
+        <StatBlock
+          label="Weekly improvement"
+          value={student.skills.length > 0 ? `+${student.weeklyImprovement}%` : '--'}
+          sub={student.skills.length > 0 ? 'Weekly progress' : 'Awaiting activity'}
+        />
+        <StatBlock
+          label="Potential"
+          value={student.potential > 0 ? `${student.potential}/100` : '--'}
+          sub={student.potential > 0 ? 'Skill potential' : 'Pending assessment'}
+        />
+        <StatBlock
+          label="Consistency"
+          value={student.consistency > 0 ? `${student.consistency}/100` : '--'}
+          sub={student.consistency > 0 ? 'Daily activity' : 'Awaiting logs'}
+        />
       </div>
 
       <Card className="p-5">

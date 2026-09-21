@@ -271,28 +271,88 @@ def logout():
     clear_user_session()
     return jsonify({'message': 'Logged out successfully.'}), 200
 
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from config import Config
+
 OTP_STORE = {}
+
+DEMO_DOMAINS = {'example.com', 'test.com', 'demo.com', 'sample.com', 'college.edu', 'msu.edu'}
+
+def send_real_email_otp(to_email: str, otp_code: str) -> bool:
+    """Attempts to dispatch an actual email via SMTP if credentials are configured."""
+    smtp_email = getattr(Config, 'SMTP_EMAIL', '')
+    smtp_password = getattr(Config, 'SMTP_PASSWORD', '')
+    smtp_server = getattr(Config, 'SMTP_SERVER', 'smtp.gmail.com')
+    smtp_port = int(getattr(Config, 'SMTP_PORT', 587))
+
+    if not smtp_email or not smtp_password:
+        print(f"[Email Dispatcher] SMTP credentials not set in config.py. OTP for {to_email} is: {otp_code}")
+        return False
+
+    try:
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = f"{otp_code} is your Confluence Verification Code"
+        msg['From'] = f"Confluence Verification <{smtp_email}>"
+        msg['To'] = to_email
+
+        html_content = f"""
+        <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; border: 1px solid #E1D6AE; border-radius: 12px; background-color: #FDFBF7;">
+            <h2 style="color: #2C3524; margin-bottom: 8px;">Confluence Verification</h2>
+            <p style="color: #6B7660; font-size: 14px;">Use the following 6-digit code to verify your account registration:</p>
+            <div style="margin: 24px 0; padding: 14px; background: #2C3524; color: #F2E8CF; font-size: 28px; font-weight: bold; letter-spacing: 6px; text-align: center; border-radius: 8px;">
+                {otp_code}
+            </div>
+            <p style="color: #6B7660; font-size: 12px;">This code will expire in 10 minutes. If you did not request this, please ignore this email.</p>
+        </div>
+        """
+        msg.attach(MIMEText(html_content, 'html'))
+
+        server = smtplib.SMTP(smtp_server, smtp_port, timeout=10)
+        server.starttls()
+        server.login(smtp_email, smtp_password)
+        server.sendmail(smtp_email, to_email, msg.as_string())
+        server.quit()
+        print(f"[Email Dispatcher] Successfully sent live email to {to_email}!")
+        return True
+    except Exception as e:
+        print(f"[Email Dispatcher Error] Could not send live email to {to_email}: {e}")
+        return False
+
 @auth_bp.route('/send-otp', methods=['POST'])
 def send_otp():
-    """Generates a 6-digit OTP for email verification during registration."""
+    """Generates a 6-digit OTP. Sends real email for actual inboxes, and demo assist for demo domains."""
     data = request.get_json() or {}
     email = data.get('email', '').strip().lower()
     if not email or '@' not in email:
         return jsonify({'error': 'A valid email address is required.'}), 400
-    # Generate random 6-digit code
+
     otp_code = str(random.randint(100000, 999999))
-    # Expires in 10 minutes (600 seconds)
     expires_at = time.time() + 600
     OTP_STORE[email] = {
         'otp': otp_code,
         'expires_at': expires_at
     }
-    # Judge-Grade Hackathon Assist:
-    # We return demo_otp in the response so you and the judges never get stuck if SMTP/Wi-Fi lags!
-    return jsonify({
-        'message': f'Verification OTP sent to {email}!',
-        'demo_otp': otp_code
-    }), 200
+
+    domain = email.split('@')[-1]
+    is_demo = domain in DEMO_DOMAINS or 'demo' in email or 'test' in email
+
+    # Attempt to send real email
+    email_dispatched = send_real_email_otp(email, otp_code)
+
+    response_payload = {
+        'message': f'Verification OTP sent to {email}!'
+    }
+
+    # Only include demo_otp if it's explicitly a demo domain OR real dispatch was not configured
+    if is_demo or not email_dispatched:
+        response_payload['demo_otp'] = otp_code
+        response_payload['is_demo'] = True
+    else:
+        response_payload['is_demo'] = False
+
+    return jsonify(response_payload), 200
 @auth_bp.route('/verify-otp', methods=['POST'])
 def verify_otp():
     """Verifies the 6-digit code before allowing account creation."""

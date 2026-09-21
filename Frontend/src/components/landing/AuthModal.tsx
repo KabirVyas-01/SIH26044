@@ -19,6 +19,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose, setMode, on
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   
+  // Student onboarding details
+  const [skills, setSkills] = useState('');
+  const [universityRollNo, setUniversityRollNo] = useState('');
+  const [desiredRole, setDesiredRole] = useState('Full Stack Developer');
+
+  // Role-specific fields
+  const [department, setDepartment] = useState('');
+  const [expertiseDomain, setExpertiseDomain] = useState('');
+  const [adminTpoContact, setAdminTpoContact] = useState('');
+
   // College Dropdown State
   const [institutes, setInstitutes] = useState<{ id: number; name: string }[]>([]);
   const [selectedInstituteId, setSelectedInstituteId] = useState<string>('1');
@@ -100,6 +110,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose, setMode, on
       if (role === 'student') {
         payload.name = name;
         payload.college = chosenCollege;
+        payload.skills = skills;
+        payload.university_roll_no = universityRollNo;
+        payload.desired_role = desiredRole;
         if (selectedInstituteId !== 'other' && selectedInstituteId) {
           payload.institute_id = parseInt(selectedInstituteId, 10);
         }
@@ -107,8 +120,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose, setMode, on
         payload.company_name = name;
       } else if (role === 'institute') {
         payload.name = name;
+        payload.admin_tpo_contact = adminTpoContact;
       } else if (role === 'academician') {
         payload.name = name;
+        payload.department = department;
+        payload.expertise_domain = expertiseDomain;
         if (selectedInstituteId !== 'other' && selectedInstituteId) {
           payload.institute_id = parseInt(selectedInstituteId, 10);
         }
@@ -283,7 +299,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose, setMode, on
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full mt-1 rounded-xl border border-[var(--border)] px-3 py-2.5 text-sm focus-ring bg-white text-black placeholder-gray-400"
+              className="w-full mt-1 rounded-xl border border-[var(--border)] px-3 py-2 text-sm focus-ring bg-white text-black placeholder-gray-400"
               placeholder={role === 'industry' ? 'e.g. Acme Tech' : 'e.g. Aditi Sharma'}
             />
           </div>
@@ -295,7 +311,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose, setMode, on
               <select
                 value={selectedInstituteId}
                 onChange={(e) => setSelectedInstituteId(e.target.value)}
-                className="w-full mt-1 rounded-xl border border-[var(--border)] px-3 py-2.5 text-sm focus-ring bg-white text-black font-medium"
+                className="w-full mt-1 rounded-xl border border-[var(--border)] px-3 py-2 text-sm focus-ring bg-white text-black font-medium"
               >
                 {institutes.map((inst) => (
                   <option key={inst.id} value={String(inst.id)}>
@@ -317,6 +333,79 @@ export const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose, setMode, on
             </div>
           )}
 
+          {/* Student Specific Fields */}
+          {role === 'student' && (
+            <>
+              <div>
+                <label className="text-xs font-semibold text-[var(--text-muted)]">University Roll No. / Student ID</label>
+                <input
+                  value={universityRollNo}
+                  onChange={(e) => setUniversityRollNo(e.target.value)}
+                  className="w-full mt-1 rounded-xl border border-[var(--border)] px-3 py-2 text-sm focus-ring bg-white text-black placeholder-gray-400"
+                  placeholder="e.g. 2026-CS-042"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-[var(--text-muted)]">Target Role / Career Goal</label>
+                <input
+                  value={desiredRole}
+                  onChange={(e) => setDesiredRole(e.target.value)}
+                  className="w-full mt-1 rounded-xl border border-[var(--border)] px-3 py-2 text-sm focus-ring bg-white text-black placeholder-gray-400"
+                  placeholder="e.g. Full Stack Developer, AI Specialist"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-[var(--text-muted)]">Known Skills & Tech Interests</label>
+                <input
+                  value={skills}
+                  onChange={(e) => setSkills(e.target.value)}
+                  className="w-full mt-1 rounded-xl border border-[var(--border)] px-3 py-2 text-sm focus-ring bg-white text-black placeholder-gray-400"
+                  placeholder="e.g. Python, SQL, React, Data Structures"
+                />
+              </div>
+            </>
+          )}
+
+          {/* Academician Specific Fields */}
+          {role === 'academician' && (
+            <>
+              <div>
+                <label className="text-xs font-semibold text-[var(--text-muted)]">Department</label>
+                <input
+                  value={department}
+                  onChange={(e) => setDepartment(e.target.value)}
+                  className="w-full mt-1 rounded-xl border border-[var(--border)] px-3 py-2 text-sm focus-ring bg-white text-black placeholder-gray-400"
+                  placeholder="e.g. Dept. of Computer Science & Engineering"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-[var(--text-muted)]">Research Domain / Expertise</label>
+                <input
+                  value={expertiseDomain}
+                  onChange={(e) => setExpertiseDomain(e.target.value)}
+                  className="w-full mt-1 rounded-xl border border-[var(--border)] px-3 py-2 text-sm focus-ring bg-white text-black placeholder-gray-400"
+                  placeholder="e.g. Distributed Systems, Machine Learning"
+                />
+              </div>
+            </>
+          )}
+
+          {/* Institute Specific Fields */}
+          {role === 'institute' && (
+            <div>
+              <label className="text-xs font-semibold text-[var(--text-muted)]">Placement Cell / TPO Contact Details</label>
+              <input
+                value={adminTpoContact}
+                onChange={(e) => setAdminTpoContact(e.target.value)}
+                className="w-full mt-1 rounded-xl border border-[var(--border)] px-3 py-2 text-sm focus-ring bg-white text-black placeholder-gray-400"
+                placeholder="e.g. Dr. K. Sharma (TPO Head), tpo@univ.edu"
+              />
+            </div>
+          )}
+
           <div>
             <label className="text-xs font-semibold text-[var(--text-muted)]">Email Address</label>
             <input
@@ -324,7 +413,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose, setMode, on
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full mt-1 rounded-xl border border-[var(--border)] px-3 py-2.5 text-sm focus-ring bg-white text-black placeholder-gray-400"
+              className="w-full mt-1 rounded-xl border border-[var(--border)] px-3 py-2 text-sm focus-ring bg-white text-black placeholder-gray-400"
               placeholder="you@university.edu"
             />
           </div>
@@ -336,7 +425,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose, setMode, on
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full mt-1 rounded-xl border border-[var(--border)] px-3 py-2.5 text-sm focus-ring bg-white text-black placeholder-gray-400"
+              className="w-full mt-1 rounded-xl border border-[var(--border)] px-3 py-2 text-sm focus-ring bg-white text-black placeholder-gray-400"
               placeholder="••••••••"
             />
           </div>
@@ -366,6 +455,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose, setMode, on
             <p className="text-xs text-[var(--text-muted)] mt-1">
               We sent a 6-digit verification code to <span className="font-semibold text-black">{email}</span>.
             </p>
+            {!demoOtp && (
+              <p className="text-[11px] text-[var(--text-muted)] mt-1.5 bg-black/5 p-2 rounded-lg">
+                📬 An actual email was dispatched to your inbox. Please check your spam/junk folder if it takes a moment to arrive.
+              </p>
+            )}
           </div>
 
           {demoOtp && (
