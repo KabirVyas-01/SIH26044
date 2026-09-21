@@ -14,10 +14,30 @@ function MainContent() {
   const [authMode, setAuthMode] = useState<'login' | 'register' | null>(null);
   const { currentUser } = useAuth();
 
+  const userPortal = currentUser
+    ? (currentUser.role === 'institute' ? 'university' : currentUser.role)
+    : null;
+
   const go = (p: string) => {
-    setPage(p);
+    if (userPortal) {
+      // Logged in: stay in own portal only
+      setPage(userPortal);
+    } else {
+      // Logged out / visitor: free navigation across all 4 portals
+      setPage(p);
+    }
     window.scrollTo(0, 0);
   };
+
+  // Sync state whenever login or logout occurs
+  useEffect(() => {
+    if (currentUser) {
+      const allowed = currentUser.role === 'institute' ? 'university' : currentUser.role;
+      setPage(allowed);
+    } else {
+      setPage('landing');
+    }
+  }, [currentUser]);
 
   useEffect(() => {
     const map: Record<string, string> = {
@@ -35,25 +55,30 @@ function MainContent() {
 
   useEffect(() => {
     const applyHash = () => {
-      const h = window.location.hash.replace('#', '');
-      if (['student', 'academician', 'university', 'industry'].includes(h)) {
-        setPage(h);
+      if (currentUser) {
+        const allowed = currentUser.role === 'institute' ? 'university' : currentUser.role;
+        setPage(allowed);
       } else {
-        setPage('landing');
+        const h = window.location.hash.replace('#', '');
+        if (['student', 'academician', 'university', 'industry'].includes(h)) {
+          setPage(h);
+        } else {
+          setPage('landing');
+        }
       }
     };
     applyHash();
     window.addEventListener('hashchange', applyHash);
     return () => window.removeEventListener('hashchange', applyHash);
-  }, []);
+  }, [currentUser]);
 
   const openAuth = (mode: 'login' | 'register') => setAuthMode(mode);
 
   const handleAuthSuccess = (userRole: UserRole) => {
     if (userRole === 'institute') {
-      go('university');
+      setPage('university');
     } else {
-      go(userRole);
+      setPage(userRole);
     }
   };
 

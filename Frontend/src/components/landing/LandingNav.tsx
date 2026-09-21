@@ -12,7 +12,10 @@ interface LandingNavProps {
 export const LandingNav: React.FC<LandingNavProps> = ({ go, openAuth }) => {
   const [open, setOpen] = useState(false);
   const { currentUser, logout } = useAuth();
-  const items = ['academician', 'student', 'university', 'industry'];
+  const userPortalKey = currentUser
+    ? (currentUser.role === 'institute' ? 'university' : currentUser.role)
+    : null;
+  const items = userPortalKey ? [userPortalKey] : ['academician', 'student', 'university', 'industry'];
 
   return (
     <header
@@ -21,7 +24,7 @@ export const LandingNav: React.FC<LandingNavProps> = ({ go, openAuth }) => {
     >
       <div className="max-w-7xl mx-auto px-5 sm:px-8 h-16 flex items-center justify-between">
         <button
-          onClick={() => go('landing')}
+          onClick={() => go(userPortalKey || 'landing')}
           className="font-display text-xl font-semibold tracking-tight focus-ring rounded"
         >
           Confluence

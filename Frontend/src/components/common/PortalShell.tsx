@@ -40,7 +40,10 @@ export const PortalShell: React.FC<PortalShellProps> = ({
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const { currentUser, logout } = useAuth();
   const meta = PORTAL_META[portalKey] || PORTAL_META.student;
-  const items = ['academician', 'student', 'university', 'industry'];
+  const userPortalKey = currentUser
+    ? (currentUser.role === 'institute' ? 'university' : currentUser.role)
+    : null;
+  const items = userPortalKey ? [userPortalKey] : ['academician', 'student', 'university', 'industry'];
 
   return (
     <div
@@ -65,7 +68,10 @@ export const PortalShell: React.FC<PortalShellProps> = ({
           >
             <Icon name="menu" className="w-5 h-5" />
           </button>
-          <button onClick={() => go('landing')} className="font-display text-lg font-semibold shrink-0 focus-ring rounded">
+          <button
+            onClick={() => go(userPortalKey || 'landing')}
+            className="font-display text-lg font-semibold shrink-0 focus-ring rounded"
+          >
             Confluence
           </button>
           <span className="hidden sm:inline text-pcream/50">/</span>
@@ -88,6 +94,17 @@ export const PortalShell: React.FC<PortalShellProps> = ({
                 </button>
               ))}
             </div>
+            {currentUser && (
+              <button
+                onClick={async () => {
+                  await logout();
+                  go('landing');
+                }}
+                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white/10 text-pcream hover:bg-rose-700/80 transition"
+              >
+                Sign out
+              </button>
+            )}
             <div className="relative hidden sm:block w-48">
               <Icon name="search" className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-pcream/60" />
               <input
