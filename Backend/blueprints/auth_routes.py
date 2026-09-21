@@ -53,6 +53,7 @@ def student_signup():
         )
         conn.commit()
         student_id = cursor.lastrowid
+        print(f"[AUTH SIGNUP SUCCESS] Student successfully saved to database: {name} ({email}) ID={student_id}")
 
         # Log the student in immediately by setting the session
         set_user_session(student_id, 'student', email, name)
@@ -70,6 +71,7 @@ def student_signup():
 
     except Exception as e:
         conn.rollback()
+        print(f"[AUTH SIGNUP ERROR] Registration failed: {e}")
         if 'UNIQUE constraint failed' in str(e):
             return jsonify({'error': 'A student with this email already exists.'}), 409
         return jsonify({'error': f'Registration failed: {str(e)}'}), 500
@@ -95,10 +97,32 @@ def student_login():
     student = cursor.fetchone()
     conn.close()
 
-    # Check if user exists AND if password hash matches!
-    if not student or not verify_password(student['password_hash'], password):
+    print(f"[AUTH LOGIN] Attempt for email: {email}")
+
+    # If not found in students, check other roles (academician, industry, institute)
+    if not student:
+        for tbl, r_name, name_col in [('academicians', 'academician', 'name'), ('industries', 'industry', 'company_name'), ('institutes', 'institute', 'name')]:
+            conn_other = get_db()
+            cur_other = conn_other.cursor()
+            cur_other.execute(f"SELECT * FROM {tbl} WHERE email = ?", (email,))
+            other_user = cur_other.fetchone()
+            conn_other.close()
+            if other_user and verify_password(other_user['password_hash'], password):
+                print(f"[AUTH LOGIN SUCCESS] Found in {tbl}, logging in as {r_name}!")
+                set_user_session(other_user['id'], r_name, other_user['email'], other_user[name_col])
+                return jsonify({
+                    'message': f"Welcome back, {other_user[name_col]}!",
+                    'user': {'id': other_user['id'], 'name': other_user[name_col], 'email': other_user['email'], 'role': r_name}
+                }), 200
+
+        print(f"[AUTH LOGIN FAILED] '{email}' does not exist in the database.")
+        return jsonify({'error': 'Invalid email or password. If you have not registered on this computer, please click Register.'}), 401
+
+    if not verify_password(student['password_hash'], password):
+        print(f"[AUTH LOGIN FAILED] Incorrect password for '{email}'.")
         return jsonify({'error': 'Invalid email or password.'}), 401
 
+    print(f"[AUTH LOGIN SUCCESS] Logged in: {student['name']} ({email})")
     set_user_session(student['id'], 'student', student['email'], student['name'])
     return jsonify({
         'message': f"Welcome back, {student['name']}!",
