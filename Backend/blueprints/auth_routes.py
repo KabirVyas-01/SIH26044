@@ -116,7 +116,7 @@ def student_login():
                 }), 200
 
         print(f"[AUTH LOGIN FAILED] '{email}' does not exist in the database.")
-        return jsonify({'error': 'Invalid email or password. If you have not registered on this computer, please click Register.'}), 401
+        return jsonify({'error': 'Invalid email or password. Please check your credentials or click Register to create an account.'}), 401
 
     if not verify_password(student['password_hash'], password):
         print(f"[AUTH LOGIN FAILED] Incorrect password for '{email}'.")

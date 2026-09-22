@@ -68,6 +68,52 @@ def seed():
         (student_id, "Sql", 85.0)
     )
 
+    # 4b. Seed Student Dhyana
+    cursor.execute(
+        """
+        INSERT INTO students (
+            name, email, password_hash, college, skills, 
+            github_url, university_roll_no, verification_status, verified_at, institute_id
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'verified', CURRENT_TIMESTAMP, ?)
+        ON CONFLICT(email) DO UPDATE SET password_hash = excluded.password_hash
+        """,
+        (
+            "Dhyana", "dhyana.mayur7e@gmail.com", default_pw, 
+            "The Maharaja Sayajirao University of Baroda", "Python, Full Stack, React, SQL",
+            "https://github.com/dhyana", "MSU-2026-CS-042", inst_id
+        )
+    )
+    cursor.execute("SELECT id FROM students WHERE email = 'dhyana.mayur7e@gmail.com'")
+    dhyana_row = cursor.fetchone()
+    if dhyana_row:
+        d_id = dhyana_row["id"]
+        cursor.execute("INSERT OR IGNORE INTO student_skill_scores (student_id, skill_name, percentage) VALUES (?, ?, ?)", (d_id, "Python", 88.0))
+        cursor.execute("INSERT OR IGNORE INTO student_skill_scores (student_id, skill_name, percentage) VALUES (?, ?, ?)", (d_id, "Sql", 82.0))
+
+    # 4c. Seed Student Aditi
+    cursor.execute(
+        """
+        INSERT INTO students (
+            name, email, password_hash, college, skills, 
+            github_url, university_roll_no, verification_status, verified_at, institute_id
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'verified', CURRENT_TIMESTAMP, ?)
+        ON CONFLICT(email) DO UPDATE SET password_hash = excluded.password_hash
+        """,
+        (
+            "Aditi", "aditi.talwar3@gmail.com", default_pw, 
+            "The Maharaja Sayajirao University of Baroda", "Python, Machine Learning, Data Structures",
+            "https://github.com/aditi", "MSU-2026-CS-007", inst_id
+        )
+    )
+    cursor.execute("SELECT id FROM students WHERE email = 'aditi.talwar3@gmail.com'")
+    aditi_row = cursor.fetchone()
+    if aditi_row:
+        a_id = aditi_row["id"]
+        cursor.execute("INSERT OR IGNORE INTO student_skill_scores (student_id, skill_name, percentage) VALUES (?, ?, ?)", (a_id, "Python", 92.0))
+        cursor.execute("INSERT OR IGNORE INTO student_skill_scores (student_id, skill_name, percentage) VALUES (?, ?, ?)", (a_id, "Sql", 86.0))
+
     cursor.execute(
         """
         INSERT OR IGNORE INTO postings (industry_id, title, description, required_skills, posting_type)
