@@ -187,7 +187,7 @@ export const StudentPortal: React.FC<{ go: (page: string) => void }> = ({ go }) 
       case 'skills':
         return <StudentSkills student={student} onUpdateSkill={handleUpdateSkill} />;
       case 'roadmap':
-        return <StudentRoadmap />;
+        return <StudentRoadmap student={student} onNavigate={(t) => setActive(t)} />;
       case 'daily':
         return <StudentDaily student={student} />;
       case 'aitools':

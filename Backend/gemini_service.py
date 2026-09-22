@@ -628,16 +628,27 @@ class GeminiService:
         normalized_level = level.strip().lower() if level in ('beginner', 'intermediate', 'advanced') else 'intermediate'
         weeks_count = 8 if int(duration_weeks or 4) >= 6 else 4
 
+        # Baseline skills prompt
+        default_baseline = f"Core fundamentals in {normalized_role}"
+        baseline_str = current_skills.strip() if current_skills and current_skills.strip() else default_baseline
+
         prompt = (
             f"You are a Principal Engineering Director and Career Architect. Generate a high-impact, highly tailored {weeks_count}-week roadmap for a student aiming for the role of '{normalized_role}' at '{normalized_level.upper()}' level.\n"
-            f"Student's current baseline skills: {current_skills or 'Standard CS fundamentals'}.\n\n"
-            f"CRITICAL INSTRUCTIONS:\n"
-            f"1. Make the roadmap STRICTLY specific to '{normalized_role}'. Do NOT return generic web development or CRUD weeks for specialized domains like AI/ML, Data Science, Cybersecurity, DevOps, Mobile, or Systems Engineering.\n"
+            f"Student's current baseline skills: {baseline_str}.\n\n"
+            f"CRITICAL DOMAIN-SPECIFIC INSTRUCTIONS:\n"
+            f"1. Make the roadmap STRICTLY specific to '{normalized_role}'.\n"
+            f"   - If '{normalized_role}' is an engineering, physical science, or chemical field (e.g., Chemical Engineer, Process Engineer, Mechanical Engineer, Civil Engineer, Electrical Engineer, Materials Scientist, Petroleum Engineer, Biotechnology):\n"
+            f"     * You MUST NEVER mention or include software developer concepts like 'Git', 'Git Flow', 'Docker', 'REST API', 'JavaScript/TypeScript', 'React', 'Frontend/Backend', 'CRUD', or web deployment.\n"
+            f"     * For Chemical Engineering: Focus strictly on Fluid Mechanics, Process Thermodynamics, Heat & Mass Transfer Unit Operations, Reaction Kinetics & Reactor Sizing (CSTR/PFR), Process Simulation (Aspen Plus / DWSIM), P&ID Diagrams, Plant Safety & HAZOP Analysis, and Environmental Process Design.\n"
+            f"     * For Mechanical Engineering: Focus on Mechanics of Materials, Thermodynamics & HVAC, Fluid Dynamics & CFD (ANSYS Fluent), Finite Element Analysis (FEA), Machine Design, and CAD/CAM (SolidWorks).\n"
+            f"     * For Civil Engineering: Focus on Structural Analysis, RCC & Steel Design, Geotechnical Soil Mechanics, Transportation Engineering, and Construction Management (Primavera/AutoCAD).\n"
+            f"     * For Electrical Engineering: Focus on Circuit Analysis, Power Systems, Analog/Digital Electronics, Embedded Hardware (C/STM32/FPGA), and Control Systems.\n"
+            f"   - If '{normalized_role}' is a software, AI, or computing field (e.g., Full Stack, AI/ML, Data Science, Cybersecurity, DevOps, Mobile), focus on that domain's modern production technologies.\n"
             f"2. Each week must contain:\n"
             f"   - 'week': 'Week 1', 'Week 2', etc.\n"
-            f"   - 'title': High-impact focus area (e.g. 'Transformers & RAG Pipeline Engineering', 'Kernel Internals & Memory Architecture', 'Distributed Consensus & Raft').\n"
+            f"   - 'title': High-impact focus area.\n"
             f"   - 'focus': 1 concise sentence describing the core objective.\n"
-            f"   - 'topics': Exactly 3-4 specific tools, libraries, architectural principles, or algorithms relevant to {normalized_role}.\n"
+            f"   - 'topics': Exactly 3-4 specific tools, principles, equations, or methodologies relevant to {normalized_role}.\n"
             f"   - 'project': A realistic, portfolio-grade mini-project deliverable with concrete requirements.\n"
             f"   - 'milestone': Measurable outcome or skill badge earned.\n"
             f"3. Calibrate difficulty to '{normalized_level.upper()}'.\n"
@@ -650,6 +661,34 @@ class GeminiService:
                 clean = raw_ai.replace("```json", "").replace("```", "").strip()
                 parsed = json.loads(clean)
                 if isinstance(parsed, list) and len(parsed) >= 3:
+                    # Sanitize any unexpected tech leak for physical engineering roles
+                    is_physical_engineering = any(k in normalized_role.lower() for k in ('chemical', 'chem', 'process', 'petroleum', 'mechanical', 'civil', 'biotech', 'materials', 'aerospace', 'electrical'))
+                    if is_physical_engineering:
+                        for item in parsed:
+                            if isinstance(item, dict) and 'topics' in item:
+                                cleaned_topics = []
+                                for t in item.get('topics', []):
+                                    t_str = str(t).lower()
+                                    is_bad = bool(re.search(r'\b(git|github|gitlab|git flow)\b', t_str)) or any(bad in t_str for bad in ('rest api', 'docker', 'typescript', 'react', 'javascript', 'crud', 'web dev', 'frontend', 'backend api'))
+                                    if is_bad:
+                                        if 'chemical' in normalized_role.lower() or 'process' in normalized_role.lower():
+                                            cleaned_topics.append('Aspen Plus Process Simulation' if 'simulation' not in t_str else 'HAZOP & Safety Protocols')
+                                        elif 'mechanical' in normalized_role.lower():
+                                            cleaned_topics.append('SolidWorks / CAD Modeling')
+                                        elif 'civil' in normalized_role.lower():
+                                            cleaned_topics.append('Structural Analysis & IS Codes')
+                                        elif 'electrical' in normalized_role.lower():
+                                            cleaned_topics.append('Embedded Systems & PCB Design')
+                                        else:
+                                            cleaned_topics.append('Engineering Design Standards')
+                                    else:
+                                        cleaned_topics.append(t)
+                                item['topics'] = cleaned_topics
+                            if isinstance(item, dict) and 'focus' in item:
+                                f_str = str(item['focus'])
+                                if re.search(r'\bgit\b', f_str, re.I):
+                                    item['focus'] = re.sub(r'\bgit\s*workflows?\b', 'engineering standards', f_str, flags=re.I)
+                                    item['focus'] = re.sub(r'\bgit\b', 'standard methods', item['focus'], flags=re.I)
                     return parsed
             except Exception as e:
                 print(f"[GeminiService Roadmap Warning] Parse error: {e}")
@@ -658,12 +697,262 @@ class GeminiService:
         return self._get_domain_roadmap(normalized_role, normalized_level, weeks_count)
 
     def _get_domain_roadmap(self, role: str, level: str, weeks: int):
-        """Rich curated curriculum banks for 12+ distinct industry specializations."""
+        """Rich curated curriculum banks for 16+ distinct industry specializations across software and physical engineering."""
         r = role.lower()
         tokens = set(re.findall(r'\b\w+\b', r))
 
-        # 1. AI & MACHINE LEARNING
-        if any(k in r for k in ('machine learning', 'deep learning', 'artificial intelligence', 'nlp', 'computer vision', 'llm', 'generative ai', 'prompt engineer')) or ('ai' in tokens or 'ml' in tokens):
+        # 1. CHEMICAL & PROCESS ENGINEERING
+        if any(k in r for k in ('chemical', 'process engineer', 'chem', 'petrochemical', 'refinery', 'plastics')) or ('chem' in tokens):
+            base = [
+                {
+                    "week": "Week 1",
+                    "title": "Fluid Mechanics & Process Thermodynamics",
+                    "focus": "Mastering incompressible/compressible fluid flow, equation of state models, and hydraulic head calculations.",
+                    "topics": ["Navier-Stokes & Bernoulli Equations", "Peng-Robinson & NRTL EOS", "Fanning Friction & Pipe Head Loss", "Pump, Valve & Compressor Sizing"],
+                    "project": "Design and calculate the hydraulic head loss, NPSH, and pump operating point for an industrial cooling water loop.",
+                    "milestone": "Fluid & Thermodynamic Mechanics Certified"
+                },
+                {
+                    "week": "Week 2",
+                    "title": "Heat & Mass Transfer Unit Operations",
+                    "focus": "Sizing shell-and-tube heat exchangers and calculating multistage vapor-liquid separation.",
+                    "topics": ["LMTD & NTU Heat Exchanger Sizing", "McCabe-Thiele Binary Distillation", "Gas Absorption & Packed Column Hydraulics", "Fickian Diffusion & Mass Transfer Coefficients"],
+                    "project": "Calculate theoretical tray count, minimum reflux ratio, and column diameter for an ethanol-water fractionation column.",
+                    "milestone": "Unit Operations Design Verified"
+                },
+                {
+                    "week": "Week 3",
+                    "title": "Chemical Reaction Kinetics & Industrial Reactor Sizing",
+                    "focus": "Formulating reaction rate laws, yield selectivity, and sizing continuous flow reactors.",
+                    "topics": ["Batch, CSTR & PFR Design Equations", "Arrhenius Rate Laws & Activation Energy", "Catalytic Kinetics & Catalyst Deactivation", "Non-Isothermal Thermal Runaway Prevention"],
+                    "project": "Size a plug flow reactor (PFR) with cooling jacket for an exothermic second-order synthesis, preventing thermal runaway.",
+                    "milestone": "Reactor Design & Kinetics Specialist"
+                },
+                {
+                    "week": "Week 4",
+                    "title": "Process Simulation (Aspen Plus / DWSIM) & Plant Safety HAZOP",
+                    "focus": "Simulating full chemical flowsheets and conducting rigorous hazard operability reviews.",
+                    "topics": ["Aspen Plus / DWSIM Flowsheet Convergence", "Piping & Instrumentation Diagrams (P&ID)", "HAZOP Hazard Identification Matrix", "OSHA PSM & Emergency Relief Sizing"],
+                    "project": "Build a converged steady-state flowsheet in Aspen Plus/DWSIM for acetone production and conduct a complete HAZOP node audit.",
+                    "milestone": "Certified Process Simulation & Safety Engineer"
+                }
+            ]
+            if weeks == 8:
+                extended = [
+                    {
+                        "week": "Week 5",
+                        "title": "Process Dynamics, Instrumentation & Automation",
+                        "focus": "Modeling dynamic process response and configuring feedback/feedforward control loops.",
+                        "topics": ["First & Second Order Response Dynamics", "PID Tuning (Ziegler-Nichols / IMC)", "DCS & SCADA Architecture", "Safety Instrumented Systems (SIL/SIS)"],
+                        "project": "Simulate closed-loop temperature and liquid level control in a jacketed CSTR with automated PID disturbance rejection.",
+                        "milestone": "Process Control & Instrumentation Pro"
+                    },
+                    {
+                        "week": "Week 6",
+                        "title": "Energy Pinch Analysis & Heat Exchanger Networks (HEN)",
+                        "focus": "Optimizing industrial thermal efficiency and minimizing utility steam/cooling water consumption.",
+                        "topics": ["Composite & Grand Composite Curves", "Pinch Temperature Identification", "HEN Synthesis & Minimum Utility Targets", "Exergy Analysis & Heat Recovery"],
+                        "project": "Perform a pinch analysis on a 6-stream chemical plant, identifying minimum utility requirements and recovering 35% waste heat.",
+                        "milestone": "Thermal Pinch & Efficiency Specialist"
+                    },
+                    {
+                        "week": "Week 7",
+                        "title": "Clean Energy, CCUS & Advanced Separations",
+                        "focus": "Implementing decarbonization technologies, membrane separations, and green hydrogen production.",
+                        "topics": ["Carbon Capture & Amine Absorption (CCUS)", "Membrane Gas Separation & Pervaporation", "Electrolyzer Water Splitting (Green H2)", "Life Cycle Assessment (LCA) Standards"],
+                        "project": "Design a post-combustion CO2 amine capture unit with energy balance and carbon abatement cost assessment.",
+                        "milestone": "Clean Tech & Decarbonization Engineer"
+                    },
+                    {
+                        "week": "Week 8",
+                        "title": "Plant Design Economics, CAPEX/OPEX & Industrial Capstone",
+                        "focus": "Delivering an executive techno-economic feasibility study for a commercial chemical manufacturing facility.",
+                        "topics": ["Guthrie Bare Module Costing & Lang Factors", "Discounted Cash Flow (NPV, IRR, Payback)", "Environmental Impact & Effluent Standards", "Comprehensive P&ID & Equipment Schedule"],
+                        "project": "Produce a complete industrial feasibility report for a 50,000 ton/year bio-ethanol facility with full CAPEX/OPEX analysis.",
+                        "milestone": "Principal Chemical Process Engineer Ready"
+                    }
+                ]
+                return base + extended
+            return base
+
+        # 2. MECHANICAL ENGINEERING
+        elif any(k in r for k in ('mechanical', 'automotive', 'aerospace', 'robotics', 'thermal', 'cad', 'manufacturing', 'hvac')):
+            base = [
+                {
+                    "week": "Week 1",
+                    "title": "Mechanics of Materials & Stress Analysis",
+                    "focus": "Calculating stress-strain states, beam deflection, and failure theories.",
+                    "topics": ["Mohr's Circle & Principal Stresses", "Von Mises & Tresca Yield Criteria", "Beam Deflection & Shear-Moment Diagrams", "Geometric Dimensioning & Tolerancing (GD&T)"],
+                    "project": "Perform stress and fatigue failure analysis for a drive shaft subjected to combined bending and torsion.",
+                    "milestone": "Stress Analysis & GD&T Certified"
+                },
+                {
+                    "week": "Week 2",
+                    "title": "Applied Thermodynamics & Heat Transfer",
+                    "focus": "Analyzing thermodynamic power cycles and calculating conductive/convective heat exchange.",
+                    "topics": ["Rankine & Brayton Power Cycles", "Conduction, Convection & Radiation", "Heat Exchanger NTU Sizing", "Psychrometrics & HVAC Design"],
+                    "project": "Design and size a multi-pass shell-and-tube heat exchanger for a gas turbine cooling circuit.",
+                    "milestone": "Thermal Systems Design Verified"
+                },
+                {
+                    "week": "Week 3",
+                    "title": "Fluid Dynamics & Computational Simulation (CFD / FEA)",
+                    "focus": "Simulating structural deformation and fluid flows using industry FEA and CFD solvers.",
+                    "topics": ["Finite Element Meshing & Convergence", "ANSYS Structural FEA Analysis", "CFD Flow Modeling (ANSYS Fluent / OpenFOAM)", "Boundary Layer & Drag Estimation"],
+                    "project": "Conduct a 3D FEA modal and structural deflection simulation on an aluminum bracket under 10kN cyclic load.",
+                    "milestone": "FEA / CFD Simulation Specialist"
+                },
+                {
+                    "week": "Week 4",
+                    "title": "Machine Element Design & CAD / CAM Manufacturing",
+                    "focus": "Designing precision mechanical assemblies and preparing CNC manufacturing deliverables.",
+                    "topics": ["Gear Train & Bearing Life Sizing", "SolidWorks / Autodesk Inventor 3D CAD", "CNC Toolpath G-Code Generation", "Design for Manufacturing & Assembly (DFMA)"],
+                    "project": "Create a fully constrained parametric 3D assembly of a two-stage spur gearbox with engineering production drawings.",
+                    "milestone": "Certified Mechanical Design Engineer"
+                }
+            ]
+            if weeks == 8:
+                extended = [
+                    {"week": "Week 5", "title": "Vibrations & Dynamic Systems", "focus": "Mitigating mechanical resonance and balancing rotors.", "topics": ["Single & Multi-DOF Vibrations", "Damping Ratios & Resonant Frequencies", "Modal Analysis", "Dynamic Rotor Balancing"], "project": "Design a tuned mass damper system to eliminate resonance in a reciprocating compressor frame.", "milestone": "Vibration Dynamics Engineer"},
+                    {"week": "Week 6", "title": "Mechatronics & Actuator Control", "focus": "Integrating sensors, stepper motors, and microcontrollers.", "topics": ["Stepper & Servo Motor Sizing", "Encoder & Sensor Interfacing", "PID Motor Control", "Relay & Solenoid Circuitry"], "project": "Build an automated 2-axis CNC gantry controller with closed-loop optical encoder feedback.", "milestone": "Mechatronics Specialist"},
+                    {"week": "Week 7", "title": "Advanced Materials & Fracture Mechanics", "focus": "Selecting composite and alloy materials for high-stress applications.", "topics": ["Composite Laminate Theory", "Stress Intensity Factors (KIC)", "Fatigue S-N Curves & Paris Law", "Corrosion Prevention Standards"], "project": "Perform a fracture mechanics assessment on a pressure vessel to determine critical crack length.", "milestone": "Materials & Fracture Certified"},
+                    {"week": "Week 8", "title": "Comprehensive Capstone Product Engineering", "focus": "Executing full-lifecycle mechanical product development.", "topics": ["DFMA Production Optimization", "BOM & Cost Optimization", "Physical Prototype Testing", "ASME Standards Compliance"], "project": "Deliver complete mechanical design package for an industrial robotic gripper ready for tooling.", "milestone": "Senior Mechanical Engineer Ready"}
+                ]
+                return base + extended
+            return base
+
+        # 3. CIVIL & STRUCTURAL ENGINEERING
+        elif any(k in r for k in ('civil', 'structural', 'construction', 'geotechnical', 'transportation', 'surveying', 'highway')):
+            base = [
+                {
+                    "week": "Week 1",
+                    "title": "Structural Analysis & Mechanics of Solids",
+                    "focus": "Analyzing statically indeterminate structures, shear forces, and bending moments.",
+                    "topics": ["Moment Distribution Method", "Slope Deflection & Energy Methods", "Influence Lines for Moving Loads", "IS 456 / Eurocode Structural Codes"],
+                    "project": "Analyze a 3-span continuous bridge girder subjected to moving truck loads using moment distribution.",
+                    "milestone": "Structural Analysis Specialist"
+                },
+                {
+                    "week": "Week 2",
+                    "title": "Reinforced Concrete Design (RCC) & Structural Steel",
+                    "focus": "Designing reinforced concrete slabs, columns, and structural steel framing.",
+                    "topics": ["Limit State Design of RCC Beams & Slabs", "Axial & Eccentric Column Design", "Bolted & Welded Steel Connections", "Euler Buckling & Lateral Torsional Buckling"],
+                    "project": "Design complete reinforcement schedule and cross-sections for a multi-story RCC frame including columns and footings.",
+                    "milestone": "RCC & Steel Design Verified"
+                },
+                {
+                    "week": "Week 3",
+                    "title": "Geotechnical Engineering & Foundation Design",
+                    "focus": "Evaluating soil bearing capacity, slope stability, and designing shallow/deep foundations.",
+                    "topics": ["Terzaghi's Bearing Capacity Theory", "Mohr-Coulomb Soil Shear Strength", "Settlement Analysis & Consolidation", "Retaining Wall Stability & Piles"],
+                    "project": "Perform bearing capacity and settlement calculations for a cantilever retaining wall and spread footing on clayey sand.",
+                    "milestone": "Geotechnical Foundation Certified"
+                },
+                {
+                    "week": "Week 4",
+                    "title": "Transportation, BIM & Construction Management",
+                    "focus": "Designing highway pavements, coordinating BIM models, and scheduling projects.",
+                    "topics": ["Flexible & Rigid Pavement Design", "AutoCAD Civil 3D Alignment", "Primavera P6 / MS Project Scheduling", "Quantity Surveying & Cost Estimation"],
+                    "project": "Produce highway vertical/horizontal alignment plans in AutoCAD Civil 3D with a CPM Gantt schedule and bill of quantities.",
+                    "milestone": "Certified Civil Infrastructure Engineer"
+                }
+            ]
+            if weeks == 8:
+                extended = [
+                    {"week": "Week 5", "title": "Earthquake Engineering & Seismic Design", "focus": "Applying response spectrum analysis and ductile detailing.", "topics": ["IS 1893 Seismic Provisions", "Base Shear & Response Spectrum", "Ductile Detailing (IS 13920)", "P-Delta Effects & Shear Walls"], "project": "Design earthquake-resistant ductile shear walls for a 10-story commercial building.", "milestone": "Seismic Design Specialist"},
+                    {"week": "Week 6", "title": "Hydrology & Water Resources Engineering", "focus": "Designing storm drainage, culverts, and open channels.", "topics": ["Manning's Equation for Open Channels", "Unit Hydrograph & Flood Routing", "Pipe Network Hydraulics (EPANET)", "Retention Basin Sizing"], "project": "Model a municipal stormwater drainage network in EPANET/HEC-RAS preventing 50-year flood ponding.", "milestone": "Water Resources Engineer"},
+                    {"week": "Week 7", "title": "Environmental Engineering & Waste Treatment", "focus": "Designing municipal water and wastewater treatment processes.", "topics": ["Activated Sludge Process Design", "BOD / COD Kinetics", "Sedimentation & Coagulation Tanks", "Solid Waste Landfill Containment"], "project": "Design primary settling tanks and aeration basins for a 10 MLD municipal sewage treatment plant.", "milestone": "Environmental Infrastructure Certified"},
+                    {"week": "Week 8", "title": "Major Infrastructure Capstone & EPC Contract Management", "focus": "Managing complete EPC project delivery and contract compliance.", "topics": ["FIDIC Contract Conditions", "Tender Preparation & Bid Evaluation", "Value Engineering & Risk Matrix", "Environmental Clearance Reports"], "project": "Deliver comprehensive DPR (Detailed Project Report) for a grade separator flyover including costs and schedules.", "milestone": "Senior Civil Project Engineer Ready"}
+                ]
+                return base + extended
+            return base
+
+        # 4. ELECTRICAL & ELECTRONICS ENGINEERING
+        elif any(k in r for k in ('electrical', 'electronics', 'vlsi', 'embedded', 'hardware', 'power system', 'circuits')) or ('ee' in tokens):
+            base = [
+                {
+                    "week": "Week 1",
+                    "title": "Circuit Analysis & Electromagnetic Fields",
+                    "focus": "Mastering AC steady state, three-phase circuits, and transient frequency analysis.",
+                    "topics": ["Kirchhoff Laws & Nodal/Mesh Analysis", "Laplace Transform Transient Analysis", "Three-Phase Balanced/Unbalanced Systems", "Maxwell's Equations & Magnetic Circuits"],
+                    "project": "Model and solve transient RLC filter response using Laplace domain equations and verify in SPICE.",
+                    "milestone": "Circuit Analysis Specialist"
+                },
+                {
+                    "week": "Week 2",
+                    "title": "Analog Electronics & Semiconductor Devices",
+                    "focus": "Designing operational amplifier filters and transistor small-signal amplifiers.",
+                    "topics": ["Op-Amp Active Filter Topologies", "BJT & MOSFET Small-Signal Models", "Differential Amplifiers & CMRR", "Switch-Mode Power Supply (SMPS) Topologies"],
+                    "project": "Design and simulate a high-efficiency DC-DC Buck converter with closed-loop voltage regulation.",
+                    "milestone": "Analog Circuit Design Verified"
+                },
+                {
+                    "week": "Week 3",
+                    "title": "Digital Systems & Embedded Hardware (FPGA / Verilog / C)",
+                    "focus": "Designing hardware description logic and interfacing microcontrollers.",
+                    "topics": ["Verilog HDL & State Machines", "FPGA Synthesis & Timing Constraints", "ARM Cortex (STM32) Architecture", "I2C, SPI & UART Protocol Interfacing"],
+                    "project": "Implement a hardware UART receiver and transmitter module in Verilog and synthesize onto an FPGA board.",
+                    "milestone": "Digital Systems & FPGA Certified"
+                },
+                {
+                    "week": "Week 4",
+                    "title": "Power Systems, Machines & PCB Design",
+                    "focus": "Analyzing power grids, electric motors, and routing multi-layer printed circuit boards.",
+                    "topics": ["Synchronous & Induction Motor Sizing", "Load Flow Analysis (Newton-Raphson)", "KiCad Multi-Layer PCB Layout", "EMC / EMI Compliance & Ground Planes"],
+                    "project": "Design a complete 4-layer microcontroller evaluation PCB in KiCad with ground planes, decoupling, and BOM ready for fab.",
+                    "milestone": "Certified Electrical Systems Engineer"
+                }
+            ]
+            if weeks == 8:
+                extended = [
+                    {"week": "Week 5", "title": "Modern Control Systems & State-Space", "focus": "Designing state-space controllers and observers.", "topics": ["State-Space Representation", "Controllability & Observability", "LQR Optimal Control", "Nyquist & Bode Stability Margins"], "project": "Design an LQR controller to balance an inverted pendulum on an actuated cart.", "milestone": "Control Systems Pro"},
+                    {"week": "Week 6", "title": "Renewable Energy & Power Electronics Grid Integration", "focus": "Designing solar inverters and grid-tied converters.", "topics": ["MPPT Solar Tracking Algorithms", "PWM Grid-Tied Inverters", "Power Factor Correction (PFC)", "Battery Management Systems (BMS)"], "project": "Build a simulated 5kW grid-tied solar inverter with perturb-and-observe MPPT and LCL filter.", "milestone": "Renewable Power Specialist"},
+                    {"week": "Week 7", "title": "VLSI Design & CMOS Physical Layout", "focus": "Designing integrated circuit logic cells with DRC and LVS checks.", "topics": ["CMOS Logic Cell Layout", "Design Rule Checks (DRC)", "Layout Versus Schematic (LVS)", "Static Timing Analysis (STA)"], "project": "Design and verify the physical layout of an 8-bit carry-lookahead adder meeting 500MHz timing constraints.", "milestone": "VLSI Design Engineer"},
+                    {"week": "Week 8", "title": "Automated Industrial Drives & SCADA Capstone", "focus": "Integrating industrial VFD motor drives with PLC/SCADA networks.", "topics": ["Variable Frequency Drives (VFD)", "PLC Ladder Logic Programming", "Modbus & Profinet Industrial Comms", "Functional Safety (IEC 61508)"], "project": "Deliver complete industrial automation architecture for a dual-motor conveyor sorting station.", "milestone": "Principal Electrical Engineer Ready"}
+                ]
+                return base + extended
+            return base
+
+        # 5. BIOTECHNOLOGY & BIOMEDICAL ENGINEERING
+        elif any(k in r for k in ('biotech', 'biomedical', 'biology', 'genetic', 'bioinformatics', 'biochem')):
+            base = [
+                {
+                    "week": "Week 1",
+                    "title": "Molecular Biology & Genetic Engineering",
+                    "focus": "Mastering recombinant DNA techniques, PCR amplification, and gene editing.",
+                    "topics": ["Recombinant DNA Cloning Vectors", "PCR Primer Design & Gel Electrophoresis", "CRISPR-Cas9 Mechanism", "Sanger & Next-Gen Sequencing"],
+                    "project": "Design a recombinant expression plasmid vector with antibiotic selection and promoter optimization.",
+                    "milestone": "Molecular Biology Certified"
+                },
+                {
+                    "week": "Week 2",
+                    "title": "Bioprocess Engineering & Fermentation Kinetics",
+                    "focus": "Modeling microbial growth, bioreactor oxygen transfer, and scale-up.",
+                    "topics": ["Monod Microbial Growth Kinetics", "Bioreactor Aeration & kLa Mass Transfer", "Batch vs Fed-Batch vs Chemostat", "Sterilization Kinetics & Thermal Sizing"],
+                    "project": "Calculate oxygen mass transfer rate (kLa) and determine fed-batch nutrient feeding profile for E. coli fermentation.",
+                    "milestone": "Bioprocess Kinetics Verified"
+                },
+                {
+                    "week": "Week 3",
+                    "title": "Downstream Processing & Bioseparations",
+                    "focus": "Purifying biopharmaceuticals through centrifugation, chromatography, and filtration.",
+                    "topics": ["Cell Disruption (Homogenization)", "Protein Chromatography (Affinity/IEX/SEC)", "Tangential Flow Ultrafiltration (TFF)", "Lyophilization & Formulation"],
+                    "project": "Design a 3-step downstream purification train for a monoclonal antibody achieving 98%+ purity.",
+                    "milestone": "Bioseparations Specialist"
+                },
+                {
+                    "week": "Week 4",
+                    "title": "Bio-Analytics, cGMP & Regulatory Compliance",
+                    "focus": "Ensuring quality control with HPLC/MS and adhering to FDA/EMA standards.",
+                    "topics": ["HPLC & Mass Spectrometry Assays", "ELISA & Protein Quantitation", "cGMP Guidelines & Cleanroom Standards", "FDA IND / NDA Regulatory Pathways"],
+                    "project": "Author a standard operating procedure (SOP) and analytical validation protocol for therapeutic enzyme release testing.",
+                    "milestone": "Certified Biopharma Quality Specialist"
+                }
+            ]
+            return base
+
+        # 6. AI & MACHINE LEARNING
+        elif any(k in r for k in ('machine learning', 'deep learning', 'artificial intelligence', 'nlp', 'computer vision', 'llm', 'generative ai', 'prompt engineer')) or ('ai' in tokens or 'ml' in tokens):
             if level == 'advanced':
                 base = [
                     {"week": "Week 1", "title": "Transformer Architecture & Self-Attention", "focus": "Mastering multi-head attention, positional encodings, and kv-caching.", "topics": ["FlashAttention-2", "Tensor Parallelism", "RoPE Positional Embeddings", "KV Cache Management"], "project": "Implement a miniature GPT decoder from scratch with RoPE & causal masking in PyTorch.", "milestone": "Custom Transformer Core Validated"},
@@ -679,7 +968,7 @@ class GeminiService:
                     {"week": "Week 4", "title": "Model Packaging & Fast Inference API", "focus": "Wrapping trained checkpoints in production FastAPI microservices.", "topics": ["FastAPI Endpoints", "ONNX Runtime Optimization", "Docker Containerization", "Model Serialization (safetensors)"], "project": "Package your trained model into a containerized REST API with interactive Swagger docs.", "milestone": "End-to-End ML Service Deployed"}
                 ]
 
-        # 1. CYBERSECURITY
+        # 7. CYBERSECURITY
         elif any(k in r for k in ('security', 'cyber', 'infosec', 'pen', 'ethical', 'soc')):
             base = [
                 {"week": "Week 1", "title": "Network Protocols & Traffic Inspection", "focus": "Understanding packet flows, handshakes, and diagnostic utilities.", "topics": ["TCP/IP & 3-Way Handshake", "Wireshark Packet Analysis", "DNS, ARP & ICMP Attacks", "Nmap Port Scanning & Flags"], "project": "Capture and analyze network traffic in Wireshark to detect an unauthorized port scan and ARP spoof.", "milestone": "Network Security Analyst"},
@@ -688,7 +977,7 @@ class GeminiService:
                 {"week": "Week 4", "title": "Incident Response, SIEM & Threat Hunting", "focus": "Monitoring logs, identifying anomalies, and coordinating defense.", "topics": ["SIEM Setup (Wazuh / Splunk)", "Syslog & Auditd Monitoring", "Incident Response Lifecycles", "MITRE ATT&CK Framework"], "project": "Configure a central SIEM that triggers real-time alerts when suspicious brute-force logins occur.", "milestone": "SOC Analyst Ready"}
             ]
 
-        # 2. DATA SCIENCE & ANALYTICS
+        # 8. DATA SCIENCE & ANALYTICS
         elif any(k in r for k in ('data science', 'data scientist', 'data analyst', 'analytics', 'statistics', 'tableau', 'powerbi')) or ('bi' in tokens or 'data' in tokens):
             base = [
                 {"week": "Week 1", "title": "Advanced SQL & Relational Querying", "focus": "Mastering analytical window functions, CTEs, and aggregation pipelines.", "topics": ["Window Functions (LEAD/LAG/RANK)", "Recursive CTEs", "Index Scan vs Index Seek", "Subqueries & Self-Joins"], "project": "Write an enterprise cohort retention and churn SQL report over 500k synthetic records.", "milestone": "Advanced SQL Badge"},
@@ -697,7 +986,7 @@ class GeminiService:
                 {"week": "Week 4", "title": "Automated ETL Pipelines & Warehouse Schemas", "focus": "Designing clean dimensional star schemas and scheduling pipelines.", "topics": ["Star vs Snowflake Schema", "dbt (Data Build Tool)", "Scheduled ETL Tasks", "Data Quality Unit Tests"], "project": "Build an automated pipeline that ingests daily CSVs, validates schema, and writes to SQLite/DuckDB.", "milestone": "Junior Data Engineer Ready"}
             ]
 
-        # 3. BACKEND ENGINEERING
+        # 9. BACKEND ENGINEERING
         elif any(k in r for k in ('backend', 'api', 'server', 'golang', 'microservices', 'distributed')) or ('go' in tokens):
             base = [
                 {"week": "Week 1", "title": "RESTful API Architecture & Schema Design", "focus": "Writing clean, type-safe API endpoints with robust relational models.", "topics": ["REST Best Practices", "Database Normalization & Foreign Keys", "Pydantic / Type Validation", "Error Handling & Status Codes"], "project": "Build a modular REST API for an institutional course catalog with pagination & filtering.", "milestone": "Production API Core"},
@@ -706,7 +995,7 @@ class GeminiService:
                 {"week": "Week 4", "title": "Docker Containerization, CI/CD & Deployments", "focus": "Packaging the microservice and deploying with automated pipelines.", "topics": ["Dockerfile Multi-Stage Builds", "Docker Compose Orchestration", "GitHub Actions CI/CD", "Cloud Platform Deployment (Render/AWS)"], "project": "Deploy the entire authenticated backend with automated test suites on push to main.", "milestone": "Industry-Ready Backend Developer"}
             ]
 
-        # 4. FRONTEND ENGINEERING
+        # 10. FRONTEND ENGINEERING
         elif any(k in r for k in ('frontend', 'react', 'next', 'ui developer', 'web developer', 'vue', 'angular')):
             base = [
                 {"week": "Week 1", "title": "Modern TypeScript & Component Architecture", "focus": "Mastering TypeScript generics, strict typing, and component composition.", "topics": ["TypeScript Generics & Utility Types", "Compound Component Patterns", "Custom Hooks & Pure Logic Separation", "Accessible HTML Semantics"], "project": "Build a type-safe, accessible component library (Modal, Combobox, Data Table) with zero dependencies.", "milestone": "TypeScript Component Architecture"},
@@ -715,7 +1004,7 @@ class GeminiService:
                 {"week": "Week 4", "title": "Automated Testing, Animation & Production Build", "focus": "Ensuring zero regression with component tests and polish.", "topics": ["Vitest & React Testing Library", "Playwright E2E Testing", "Framer Motion Micro-Interactions", "Bundle Analysis & Code Splitting"], "project": "Add 85%+ test coverage and silky entrance animations to a production SaaS web application.", "milestone": "Production Frontend Engineer"}
             ]
 
-        # 5. DEVOPS & CLOUD INFRASTRUCTURE
+        # 11. DEVOPS & CLOUD INFRASTRUCTURE
         elif any(k in r for k in ('devops', 'cloud', 'sre', 'infrastructure', 'kubernetes', 'aws', 'docker')):
             base = [
                 {"week": "Week 1", "title": "Linux Systems Internals & Shell Scripting", "focus": "Mastering POSIX command line, process management, and networking.", "topics": ["Bash Automation Scripts", "Systemd Services & Cron", "Process Management (ps/kill/top)", "SSH Keys & Firewall Rules (ufw)"], "project": "Write a bash automation suite for automated database backups, log rotation, and health monitoring.", "milestone": "Linux Administration Core"},
@@ -724,7 +1013,7 @@ class GeminiService:
                 {"week": "Week 4", "title": "Infrastructure as Code (Terraform) & CI/CD", "focus": "Automating cloud infrastructure provisioning and continuous delivery.", "topics": ["Terraform HCL Syntax", "State Files & Remote Backends", "GitHub Actions CI/CD Pipeline", "Cloud Watch & Prometheus Alerting"], "project": "Write Terraform manifests to provision cloud resources and trigger deployment automatically on Git push.", "milestone": "Certified DevOps Associate"}
             ]
 
-        # 6. UI/UX & PRODUCT DESIGN
+        # 12. UI/UX & PRODUCT DESIGN
         elif any(k in r for k in ('ui/ux', 'ux', 'product design', 'figma', 'design')):
             base = [
                 {"week": "Week 1", "title": "Design Thinking, User Research & Wireframing", "focus": "Conducting user interviews, journey maps, and low-fidelity wireframes.", "topics": ["User Persona Archetypes", "Information Architecture (IA)", "Low-Fidelity Wireframing", "Competitive Heuristic Evaluation"], "project": "Design a complete user flow wireframe solving a friction point in campus student recruitment.", "milestone": "UX Research & Wireframe Verified"},
@@ -733,7 +1022,7 @@ class GeminiService:
                 {"week": "Week 4", "title": "Usability Testing & Design-to-Code Handoff", "focus": "Testing prototypes with real users and preparing assets for engineering.", "topics": ["Usability Testing Sessions", "System Usability Scale (SUS)", "Handoff Specs for Developers", "Case Study Portfolio Presentation"], "project": "Publish a comprehensive UI/UX case study documenting research, iterations, and final design.", "milestone": "Portfolio Ready Product Designer"}
             ]
 
-        # 7. BLOCKCHAIN & WEB3
+        # 13. BLOCKCHAIN & WEB3
         elif any(k in r for k in ('blockchain', 'web3', 'solidity', 'smart contract', 'crypto', 'ethereum')):
             base = [
                 {"week": "Week 1", "title": "Cryptography Foundations & Ethereum Virtual Machine", "focus": "Understanding cryptographic hashing, elliptic curves, and EVM gas mechanics.", "topics": ["SHA-256 & Keccak256", "Public-Key Cryptography", "EVM Storage vs Memory vs Calldata", "Gas Optimization Strategies"], "project": "Write a gas-optimized ERC-20 token contract with minting and burning caps.", "milestone": "EVM Fundamentals"},
@@ -742,7 +1031,7 @@ class GeminiService:
                 {"week": "Week 4", "title": "DApp Frontend Integration (Ethers.js / Wagmi)", "focus": "Connecting client frontends with web3 wallets and smart contracts.", "topics": ["Wagmi / Viem React Hooks", "WalletConnect & MetaMask Integration", "The Graph Indexing & Subgraphs", "IPFS Decentralized Storage"], "project": "Deploy a complete decentralized application (DApp) with wallet login and live contract transactions.", "milestone": "Full Stack Web3 Developer"}
             ]
 
-        # 7. MOBILE APP DEVELOPMENT
+        # 14. MOBILE APP DEVELOPMENT
         elif any(k in r for k in ('mobile', 'android', 'ios', 'flutter', 'react native', 'swift', 'kotlin')):
             base = [
                 {"week": "Week 1", "title": "Mobile UI Components & Responsive Layouts", "focus": "Building smooth touch-first layouts that adapt across phone and tablet screens.", "topics": ["Flexbox & Grid on Mobile", "Platform-Specific Navigation", "Safe Area & Notch Insets", "Adaptive Theming (Dark/Light)"], "project": "Build an onboarding and home screen for an educational app that renders flawlessly on iOS & Android.", "milestone": "Mobile Layout Foundations"},
@@ -751,7 +1040,16 @@ class GeminiService:
                 {"week": "Week 4", "title": "Offline-First Architecture & Store Release", "focus": "Local SQLite database sync and production release preparation.", "topics": ["Local SQLite / WatermelonDB", "Background Sync Tasks", "App Icon & Splash Configuration", "APK / AAB Build & Signing"], "project": "Bundle a production-signed release APK with full offline mode support and zero crash rating.", "milestone": "Published Mobile Developer"}
             ]
 
-        # DEFAULT: FULL STACK SOFTWARE ENGINEERING
+        # 15. GENERAL / PHYSICAL ENGINEERING FALLBACK (Non-software STEM disciplines)
+        elif any(k in r for k in ('engineer', 'science', 'technolog', 'physic', 'chem', 'math', 'material', 'petroleum', 'mining', 'aerospace', 'energy', 'nuclear')) and not any(s in r for s in ('software', 'web', 'dev', 'code', 'stack', 'app', 'front', 'back', 'cloud', 'cyber', 'data', 'ai', 'ml', 'it')):
+            base = [
+                {"week": "Week 1", "title": "Mathematical Modeling & Dimensional Physics", "focus": f"Mastering mathematical formulations, governing equations, and error estimation for {role}.", "topics": [f"{role} Governing Principles", "Differential Equations Modeling", "Dimensional Analysis & Scaling", "Measurement Uncertainty Analysis"], "project": f"Develop an analytical mathematical model simulating baseline physical behavior in {role}.", "milestone": "Analytical Modeling Verified"},
+                {"week": "Week 2", "title": "Materials Science & Experimental Characterization", "focus": "Evaluating mechanical, thermal, and chemical material behaviors under operational stress.", "topics": ["Material Selection & Stress States", "Phase Equilibria & Thermal Properties", "Experimental Protocol Design", "Failure Modes & Degradation Analysis"], "project": f"Execute a comprehensive material selection matrix and degradation risk audit for {role}.", "milestone": "Materials Characterization Certified"},
+                {"week": "Week 3", "title": "Computational Simulation & Numerical Solvers", "focus": "Applying numerical algorithms and simulation tools to validate physical designs.", "topics": ["Numerical Integration & Solvers", "Steady-State & Transient Simulation", "Boundary Condition Calibration", "Parametric Sensitivity Analysis"], "project": f"Build a validated computational model predicting operational performance in {role}.", "milestone": "Numerical Simulation Specialist"},
+                {"week": "Week 4", "title": "Engineering Standards, Quality & Capstone Project", "focus": f"Delivering a fully compliant industrial technical specification for {role}.", "topics": ["ISO & Industry Standard Compliance", "Six Sigma Quality Engineering", "Hazard & Risk Mitigation Matrix", "Comprehensive Engineering Report"], "project": f"Publish an end-to-end industrial engineering capstone design report for a commercial {role} system.", "milestone": f"Certified {role} Professional"}
+            ]
+
+        # 16. DEFAULT: FULL STACK SOFTWARE ENGINEERING
         else:
             base = [
                 {"week": "Week 1", "title": "Foundations & Modular Architecture", "focus": f"Mastering core principles, version control, and modular patterns for {role}.", "topics": [f"{role} Core Fundamentals", "Git Flow & Collaborative Branching", "Modular Code Organization", "Type Safety & Linters"], "project": f"Build a clean starter project architecture demonstrating modular design for a {role}.", "milestone": "Core Foundations Verified"},
@@ -760,7 +1058,7 @@ class GeminiService:
                 {"week": "Week 4", "title": "Deployment, Automated Testing & System Hardening", "focus": "Hardening the application for production scale with CI/CD.", "topics": ["Automated Unit & Integration Tests", "Containerization with Docker", "Continuous Deployment Pipelines", "Performance Profiling & Auditing"], "project": f"Deploy a production-ready portfolio project showcasing all skills required of an industry {role}.", "milestone": f"Certified {role} Ready"}
             ]
 
-        # If 8 weeks requested, extend seamlessly
+        # If 8 weeks requested, extend seamlessly for default tracks
         if weeks == 8 and len(base) == 4:
             extended = [
                 {"week": "Week 5", "title": "Advanced Design Patterns & Architecture", "focus": f"Applying enterprise architectural patterns to {role}.", "topics": ["Domain-Driven Design (DDD)", "Event-Driven Messaging", "Clean Architecture Layers", "Decoupled Services"], "project": "Refactor application to use dependency injection and decoupled service layers.", "milestone": "Enterprise Architecture"},

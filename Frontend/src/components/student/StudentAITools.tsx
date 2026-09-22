@@ -14,26 +14,36 @@ const RESUME_ROLE_OPTIONS = [
   'Backend Engineer',
   'Frontend Developer',
   'AI/ML Specialist',
+  'Data Scientist',
   'Cloud & DevOps Engineer',
   'Cybersecurity Analyst',
-  'Data Scientist',
+  'Chemical Engineer',
+  'Mechanical Engineer',
+  'Civil Engineer',
+  'Electrical Engineer',
+  'Biotech Specialist',
   'Mobile App Developer'
 ];
 
 const ROADMAP_ROLE_OPTIONS = [
+  'Chemical Engineer',
+  'Mechanical Engineer',
+  'Civil Engineer',
+  'Electrical Engineer',
   'Full Stack Developer',
-  'Backend Engineer',
-  'Frontend Developer',
   'AI/ML Specialist',
   'Data Scientist',
+  'Backend Engineer',
+  'Frontend Developer',
   'Cloud & DevOps',
   'Cybersecurity Analyst',
+  'Biotech Specialist',
   'Mobile App Developer',
   'UI/UX Designer',
   'Blockchain & Web3'
 ];
 
-const POPULAR_SKILLS = ['Python', 'React', 'JavaScript', 'SQL', 'DevOps & Docker', 'Data Structures', 'Git & CI/CD'];
+const POPULAR_SKILLS = ['Python', 'React', 'JavaScript', 'SQL', 'Aspen Plus', 'MATLAB', 'SolidWorks', 'DevOps & Docker', 'Git & CI/CD'];
 
 export const StudentAITools: React.FC<StudentAIToolsProps> = ({ student, onUpdateResume }) => {
   const [activeTool, setActiveTool] = useState<'resume' | 'roadmap' | 'interview'>('resume');
@@ -46,25 +56,67 @@ export const StudentAITools: React.FC<StudentAIToolsProps> = ({ student, onUpdat
   const [justSaved, setJustSaved] = useState(false);
   const [autoFilledBadge, setAutoFilledBadge] = useState(false);
 
+  // 2. Roadmap Generator State
+  const initialRoadmapRole = student?.desiredRole || student?.role || student?.field || 'Full Stack Developer';
+  const [roadmapRole, setRoadmapRole] = useState(initialRoadmapRole);
+  const [roadmapLevel, setRoadmapLevel] = useState<'beginner' | 'intermediate' | 'advanced'>('intermediate');
+  const [roadmapWeeks, setRoadmapWeeks] = useState<4 | 8>(4);
+  const [roadmapOverview, setRoadmapOverview] = useState('');
+  const [roadmapResult, setRoadmapResult] = useState<any[]>([]);
+  const [loadingRoadmap, setLoadingRoadmap] = useState(false);
+
   useEffect(() => {
     if (student) {
       if (!resumeInput && student.resumeText) setResumeInput(student.resumeText);
-      if (student.desiredRole) setTargetRole(student.desiredRole);
+      if (student.desiredRole) {
+        setTargetRole(student.desiredRole);
+        setRoadmapRole(student.desiredRole);
+      } else if (student.field) {
+        setRoadmapRole(student.field);
+      }
       if (!resumeResult && student.resumeReview) setResumeResult(student.resumeReview);
     }
   }, [student]);
 
-  // Auto-fill from student profile
+  // Auto-fill from student profile with domain adaptation
   const handleAutoFillResume = () => {
     if (!student) return;
-    const skillsList = student.skills?.map((s) => s.name).join(', ') || 'Python, JavaScript, React, SQL, Git';
+    const f = (student.field || student.role || student.desiredRole || '').toLowerCase();
+    const isChemical = /chem/i.test(f) || /process/i.test(f);
+    const isMechanical = /mech/i.test(f) || /auto/i.test(f) || /aero/i.test(f);
+    const isCivil = /civil/i.test(f) || /struct/i.test(f) || /construct/i.test(f);
+    const isElectrical = /electr/i.test(f) || /vlsi/i.test(f) || /embedded/i.test(f);
+
+    let defaultSkills = 'Python, JavaScript, React, SQL, Git';
+    let defaultProject = '• Scalable Web Application: Built with React, Node.js, and SQLite. Implemented JWT authentication and responsive UI.';
+    let defaultExperience = 'Fresher / Computer Science coursework with hands-on lab projects and collaborative hackathons.';
+
+    if (isChemical) {
+      defaultSkills = 'Process Simulation (Aspen Plus / DWSIM), Fluid Mechanics, Heat & Mass Transfer, Reaction Kinetics, P&ID, HAZOP Safety Analysis, MATLAB';
+      defaultProject = '• Bio-Ethanol Distillation Simulation: Modeled a 10-tray fractionation column in Aspen Plus with thermal pinch optimization, reducing utility reboiler duty by 18%.\n• Industrial Reactor Sizing: Designed a cooled continuous stirred tank reactor (CSTR) for exothermic esterification with thermal runaway prevention.';
+      defaultExperience = 'Chemical Engineering coursework with laboratory fluid flow measurements, shell-and-tube heat exchanger sizing, and process safety reviews.';
+    } else if (isMechanical) {
+      defaultSkills = 'SolidWorks 3D CAD, ANSYS FEA/CFD, Applied Thermodynamics, GD&T, CNC Machining, MATLAB, Machine Design';
+      defaultProject = '• Two-Stage Epicyclic Gearbox: Designed and simulated full stress/strain distribution in ANSYS with AGMA gear rating.\n• Gas Turbine Heat Exchanger: Sized a multi-pass cross-flow heat exchanger using LMTD and NTU methods.';
+      defaultExperience = 'Mechanical Engineering labs covering stress-strain tensile testing, wind-tunnel aerodynamics, and CAD assemblies.';
+    } else if (isCivil) {
+      defaultSkills = 'AutoCAD Civil 3D, STAAD.Pro / ETABS, Structural RCC Design, Soil Mechanics, Primavera P6, Surveying';
+      defaultProject = '• Seismic Analysis of Multi-Storey RCC Frame: Modeled 8-storey frame under zone IV seismic loads adhering to IS 1893 standards.\n• Cantilever Retaining Wall Design: Calculated soil bearing capacity and factor of safety against overturning and sliding.';
+      defaultExperience = 'Civil Engineering laboratory testing in soil shear strength, concrete mix design, and total station surveying.';
+    } else if (isElectrical) {
+      defaultSkills = 'KiCad PCB Design, STM32 / ARM Embedded C, Power Electronics, MATLAB/Simulink, SPICE Circuit Simulation, Verilog';
+      defaultProject = '• Synchronous Buck Converter: Designed closed-loop 48V to 12V SMPS with 94% measured efficiency and KiCad 4-layer PCB.\n• FPGA UART Communication: Implemented full-duplex UART controller in Verilog with parity checking.';
+      defaultExperience = 'Electrical Engineering coursework covering three-phase power flow, microcontrollers, and analog filter topologies.';
+    }
+
+    const skillsList = student.skills?.length ? student.skills.map((s) => s.name).join(', ') : defaultSkills;
     const projectsList = student.projects?.length
       ? student.projects.map((p) => `• ${p.name}: Built with ${(p.tech || []).join(', ')}. ${p.review || ''}`).join('\n')
-      : '• Scalable Web Application: Built with React, Node.js, and SQLite. Implemented JWT authentication and responsive UI.';
-    const experienceText = student.priorExperience || 'Fresher / Computer Science coursework with hands-on lab projects and collaborative hackathons.';
+      : defaultProject;
+    const experienceText = student.priorExperience || defaultExperience;
     const universityText = student.university || 'Institute of Engineering & Technology';
-    const degreeText = student.qualification || student.field || 'B.Tech in Computer Science';
-    const roleText = student.desiredRole || student.role || 'Full Stack Developer';
+    const degreeText = student.qualification || student.field || (isChemical ? 'B.Tech in Chemical Engineering' : 'B.Tech in Engineering');
+    const roleText = student.desiredRole || student.role || (isChemical ? 'Chemical Engineer' : 'Engineering Specialist');
 
     const generatedResume = `CANDIDATE: ${student.name || 'Student'}
 UNIVERSITY: ${universityText}
@@ -82,21 +134,13 @@ ${projectsList}
 
 PORTFOLIO & LINKS:
 GitHub: ${student.githubUrl || 'github.com/profile'}
-LeetCode: ${student.leetcodeUrl || 'leetcode.com/profile'}`;
+Portfolio: ${student.leetcodeUrl || 'portfolio-profile.dev'}`;
 
     setResumeInput(generatedResume);
     if (student.desiredRole) setTargetRole(student.desiredRole);
     setAutoFilledBadge(true);
     setTimeout(() => setAutoFilledBadge(false), 4000);
   };
-
-  // 2. Roadmap Generator State
-  const [roadmapRole, setRoadmapRole] = useState('Full Stack Developer');
-  const [roadmapLevel, setRoadmapLevel] = useState<'beginner' | 'intermediate' | 'advanced'>('intermediate');
-  const [roadmapWeeks, setRoadmapWeeks] = useState<4 | 8>(4);
-  const [roadmapOverview, setRoadmapOverview] = useState('');
-  const [roadmapResult, setRoadmapResult] = useState<any[]>([]);
-  const [loadingRoadmap, setLoadingRoadmap] = useState(false);
 
   // 3. Interview Prep State
   const [interviewSkill, setInterviewSkill] = useState('Python');
@@ -165,40 +209,186 @@ LeetCode: ${student.leetcodeUrl || 'leetcode.com/profile'}`;
       setRoadmapResult(list);
       setRoadmapOverview(res?.overview || '');
     } catch {
-      setRoadmapResult([
-        {
-          week: 'Week 1',
-          title: 'Foundations & Architecture',
-          focus: `Core fundamentals, project structure, and git workflows for ${roadmapRole}.`,
-          topics: ['Core Architecture', 'Clean Code Principles', 'Git Flow & Branching', 'Environment Configuration'],
-          project: `Build a clean starter project architecture demonstrating modular design for ${roadmapRole}.`,
-          milestone: 'Architecture & Foundations Verified'
-        },
-        {
-          week: 'Week 2',
-          title: 'Data Modeling & API Services',
-          focus: 'Designing resilient data schemas and authenticated API contracts.',
-          topics: ['Relational Schemas', 'REST / JSON API Design', 'Authentication & JWT Middleware', 'Input Validation'],
-          project: 'Build an authenticated multi-role CRUD service with database transactions.',
-          milestone: 'Data & Service Architecture'
-        },
-        {
-          week: 'Week 3',
-          title: 'Integration & State Management',
-          focus: 'Connecting frontend clients with real-time responsive data.',
-          topics: ['Component Hierarchy', 'Asynchronous API Fetching', 'Global & Local State', 'Responsive Mobile-First UI'],
-          project: 'Connect full-stack client portal with live API endpoints and loading states.',
-          milestone: 'Full Stack Integration'
-        },
-        {
-          week: 'Week 4',
-          title: 'Testing, Deployment & Production Polish',
-          focus: 'Hardening the application for production scale with automated CI/CD.',
-          topics: ['Unit & Integration Tests', 'Containerization with Docker', 'CI/CD Pipelines', 'Performance Profiling'],
-          project: `Deploy a production-ready portfolio project showcasing all skills required of an industry ${roadmapRole}.`,
-          milestone: `Certified ${roadmapRole} Ready`
-        }
-      ]);
+      const r = roadmapRole.toLowerCase();
+      let fallbackCurriculum: any[] = [];
+
+      if (/chem/i.test(r) || /process/i.test(r)) {
+        fallbackCurriculum = [
+          {
+            week: 'Week 1',
+            title: 'Fluid Mechanics & Process Thermodynamics',
+            focus: 'Navier-Stokes, Bernoulli equations, EOS phase behavior, and hydraulic pipe/pump sizing.',
+            topics: ['Navier-Stokes & Bernoulli Equations', 'Peng-Robinson & NRTL EOS', 'Pipe Head Loss & NPSH', 'Pump & Compressor Sizing'],
+            project: 'Calculate hydraulic head loss, NPSH, and pump operating point for an industrial cooling water loop.',
+            milestone: 'Fluid & Thermo Mechanics Verified'
+          },
+          {
+            week: 'Week 2',
+            title: 'Heat & Mass Transfer Unit Operations',
+            focus: 'Sizing shell-and-tube exchangers and calculating multistage vapor-liquid separation.',
+            topics: ['LMTD & NTU Exchanger Sizing', 'McCabe-Thiele Distillation', 'Packed Column Hydraulics', 'Fickian Diffusion'],
+            project: 'Size theoretical tray count and column diameter for a binary ethanol-water fractionation column.',
+            milestone: 'Unit Operations Design Verified'
+          },
+          {
+            week: 'Week 3',
+            title: 'Reaction Kinetics & Industrial Reactor Design',
+            focus: 'Formulating reaction rate laws, yield selectivity, and sizing continuous flow reactors.',
+            topics: ['Batch, CSTR & PFR Equations', 'Arrhenius Activation Energy', 'Catalytic Selectivity', 'Thermal Runaway Prevention'],
+            project: 'Size a cooled plug flow reactor (PFR) for an exothermic synthesis, mitigating thermal runaway.',
+            milestone: 'Reactor Design Specialist'
+          },
+          {
+            week: 'Week 4',
+            title: 'Process Simulation (Aspen Plus / DWSIM) & HAZOP Safety',
+            focus: 'Simulating plant flowsheets and conducting comprehensive hazard operability reviews.',
+            topics: ['Aspen Plus / DWSIM Flowsheets', 'Piping & Instrumentation (P&ID)', 'HAZOP Risk Matrix', 'OSHA PSM Standards'],
+            project: 'Build a converged flowsheet in Aspen Plus/DWSIM and complete a full HAZOP node risk audit.',
+            milestone: 'Certified Chemical Process Engineer'
+          }
+        ];
+      } else if (/mech/i.test(r) || /auto/i.test(r) || /aero/i.test(r)) {
+        fallbackCurriculum = [
+          {
+            week: 'Week 1',
+            title: 'Mechanics of Materials & Stress Analysis',
+            focus: 'Calculating stress-strain states, beam deflection, and failure criteria.',
+            topics: ["Mohr's Circle & Stresses", 'Von Mises Yield Criteria', 'Beam Deflection & Bending', 'GD&T Tolerancing'],
+            project: 'Perform stress and fatigue failure analysis for a drive shaft subjected to combined loading.',
+            milestone: 'Stress Analysis Certified'
+          },
+          {
+            week: 'Week 2',
+            title: 'Applied Thermodynamics & Heat Transfer',
+            focus: 'Power cycles, conduction/convection, and heat exchanger sizing.',
+            topics: ['Rankine & Brayton Cycles', 'Conduction & Convection', 'Heat Exchanger NTU Sizing', 'HVAC Psychrometry'],
+            project: 'Design and size a shell-and-tube heat exchanger for a turbine cooling loop.',
+            milestone: 'Thermal Systems Verified'
+          },
+          {
+            week: 'Week 3',
+            title: 'Fluid Dynamics & Simulation (CFD / FEA)',
+            focus: 'Structural deformation and fluid flow modeling in ANSYS.',
+            topics: ['FEA Meshing & Convergence', 'ANSYS Structural Analysis', 'CFD Flow Modeling', 'Boundary Layer & Drag'],
+            project: 'Conduct a 3D FEA modal and structural deflection simulation on an aluminum bracket.',
+            milestone: 'Simulation Specialist'
+          },
+          {
+            week: 'Week 4',
+            title: 'Machine Element Design & CAD / CAM Manufacturing',
+            focus: 'Precision assembly design and CNC toolpath generation.',
+            topics: ['Gear & Bearing Life Sizing', 'SolidWorks 3D CAD', 'CNC Toolpath G-Code', 'DFMA Principles'],
+            project: 'Design a fully constrained 3D assembly of a two-stage gearbox with engineering drawings.',
+            milestone: 'Certified Mechanical Design Engineer'
+          }
+        ];
+      } else if (/civil/i.test(r) || /struct/i.test(r) || /construct/i.test(r)) {
+        fallbackCurriculum = [
+          {
+            week: 'Week 1',
+            title: 'Structural Analysis & Mechanics of Solids',
+            focus: 'Indeterminate structures, shear forces, and bending moments.',
+            topics: ['Moment Distribution Method', 'Slope Deflection', 'Influence Lines', 'Structural Design Codes'],
+            project: 'Analyze a 3-span continuous bridge girder subjected to moving truck loads.',
+            milestone: 'Structural Analysis Specialist'
+          },
+          {
+            week: 'Week 2',
+            title: 'RCC & Structural Steel Design',
+            focus: 'Reinforced concrete slabs, columns, and structural steel framing.',
+            topics: ['Limit State RCC Design', 'Column Buckling (Euler)', 'Bolted & Welded Joints', 'Torsional Buckling'],
+            project: 'Design complete reinforcement schedule and cross-sections for a multi-storey RCC frame.',
+            milestone: 'RCC & Steel Design Verified'
+          },
+          {
+            week: 'Week 3',
+            title: 'Geotechnical Soil Mechanics & Foundations',
+            focus: 'Bearing capacity, slope stability, and foundation sizing.',
+            topics: ["Terzaghi's Bearing Capacity", 'Mohr-Coulomb Strength', 'Settlement Consolidation', 'Retaining Wall Stability'],
+            project: 'Perform bearing capacity and settlement calculations for a cantilever retaining wall.',
+            milestone: 'Geotechnical Specialist'
+          },
+          {
+            week: 'Week 4',
+            title: 'Transportation, BIM & Construction Mgmt',
+            focus: 'Pavement design, BIM coordination, and project scheduling.',
+            topics: ['Pavement Design', 'AutoCAD Civil 3D', 'Primavera P6 Scheduling', 'Quantity Surveying & Estimation'],
+            project: 'Produce highway alignment plans in AutoCAD Civil 3D with a CPM Gantt schedule.',
+            milestone: 'Certified Civil Infrastructure Engineer'
+          }
+        ];
+      } else if (/electr/i.test(r) || /vlsi/i.test(r) || /circuit/i.test(r)) {
+        fallbackCurriculum = [
+          {
+            week: 'Week 1',
+            title: 'Circuit Analysis & Electromagnetic Fields',
+            focus: 'Mastering AC steady state, three-phase systems, and transient analysis.',
+            topics: ['Kirchhoff Laws & Nodal Analysis', 'Laplace Transient Analysis', 'Three-Phase Systems', "Maxwell's Equations"],
+            project: 'Model transient RLC filter response using Laplace equations and verify in SPICE.',
+            milestone: 'Circuit Analysis Certified'
+          },
+          {
+            week: 'Week 2',
+            title: 'Analog Electronics & Power Converters',
+            focus: 'Op-amp active filters and switch-mode power supply design.',
+            topics: ['Op-Amp Active Filters', 'MOSFET Small-Signal Models', 'Differential Amplifiers', 'DC-DC Buck/Boost Converters'],
+            project: 'Design and simulate a high-efficiency DC-DC Buck converter with closed-loop regulation.',
+            milestone: 'Analog Design Verified'
+          },
+          {
+            week: 'Week 3',
+            title: 'Digital Systems & Embedded Hardware',
+            focus: 'Hardware description logic and ARM microcontrollers.',
+            topics: ['Verilog HDL & State Machines', 'FPGA Synthesis & Timing', 'ARM Cortex STM32 C', 'I2C / SPI / UART Bus Interfacing'],
+            project: 'Implement a hardware UART module in Verilog and synthesize onto an FPGA.',
+            milestone: 'Digital & Embedded Specialist'
+          },
+          {
+            week: 'Week 4',
+            title: 'Power Systems, Machines & PCB Design',
+            focus: 'Electric machines, power distribution, and multi-layer PCB layout.',
+            topics: ['Induction Motors & Sizing', 'Power Flow Analysis', 'KiCad Multi-Layer PCB', 'EMC / EMI Grounding Rules'],
+            project: 'Design a 4-layer microcontroller evaluation board in KiCad ready for fabrication.',
+            milestone: 'Certified Electrical Systems Engineer'
+          }
+        ];
+      } else {
+        fallbackCurriculum = [
+          {
+            week: 'Week 1',
+            title: 'Foundations & Modular Architecture',
+            focus: `Core fundamentals, project structure, and modular patterns for ${roadmapRole}.`,
+            topics: ['Core Architecture', 'Clean Code Principles', 'Git Flow & Branching', 'Environment Configuration'],
+            project: `Build a clean starter project architecture demonstrating modular design for ${roadmapRole}.`,
+            milestone: 'Architecture & Foundations Verified'
+          },
+          {
+            week: 'Week 2',
+            title: 'Data Modeling & API Services',
+            focus: 'Designing resilient data schemas and authenticated API contracts.',
+            topics: ['Relational Schemas', 'REST / JSON API Design', 'Authentication & JWT Middleware', 'Input Validation'],
+            project: 'Build an authenticated multi-role CRUD service with database transactions.',
+            milestone: 'Data & Service Architecture'
+          },
+          {
+            week: 'Week 3',
+            title: 'Integration & State Management',
+            focus: 'Connecting frontend clients with real-time responsive data.',
+            topics: ['Component Hierarchy', 'Asynchronous API Fetching', 'Global & Local State', 'Responsive Mobile-First UI'],
+            project: 'Connect full-stack client portal with live API endpoints and loading states.',
+            milestone: 'Full Stack Integration'
+          },
+          {
+            week: 'Week 4',
+            title: 'Testing, Deployment & Production Polish',
+            focus: 'Hardening the application for production scale with automated CI/CD.',
+            topics: ['Unit & Integration Tests', 'Containerization with Docker', 'CI/CD Pipelines', 'Performance Profiling'],
+            project: `Deploy a production-ready portfolio project showcasing all skills required of an industry ${roadmapRole}.`,
+            milestone: `Certified ${roadmapRole} Ready`
+          }
+        ];
+      }
+      setRoadmapResult(fallbackCurriculum);
       setRoadmapOverview(`A dedicated ${roadmapWeeks}-week curriculum calibrated for ${roadmapRole} at the ${roadmapLevel} level.`);
     } finally {
       setLoadingRoadmap(false);
@@ -563,7 +753,7 @@ LeetCode: ${student.leetcodeUrl || 'leetcode.com/profile'}`;
                   value={roadmapRole}
                   onChange={(e) => setRoadmapRole(e.target.value)}
                   className="w-full rounded-xl border border-[var(--border)] px-3.5 py-2 text-sm focus-ring bg-white text-black"
-                  placeholder="e.g. AI/ML Specialist, Full Stack Developer, Cybersecurity Analyst"
+                  placeholder="e.g. Chemical Engineer, Mechanical Engineer, AI/ML Specialist, Full Stack Developer"
                 />
               </div>
 
