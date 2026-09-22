@@ -39,6 +39,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose, setMode, on
   const [otpCode, setOtpCode] = useState('');
   const [demoOtp, setDemoOtp] = useState<string | null>(null);
 
+  // Forgot / Reset Password State
+  const [authView, setAuthView] = useState<'login' | 'register' | 'forgot'>('login');
+  const [forgotStep, setForgotStep] = useState<'request' | 'verify'>('request');
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetOtp, setResetOtp] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [demoResetOtp, setDemoResetOtp] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -66,10 +76,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose, setMode, on
   }, [mode]);
 
   useEffect(() => {
+    if (mode === 'login' || mode === 'register') {
+      setAuthView(mode);
+    }
     setError(null);
+    setSuccessMsg(null);
     setOtpStep(false);
     setOtpCode('');
     setDemoOtp(null);
+    setForgotStep('request');
+    setResetOtp('');
+    setNewPassword('');
+    setConfirmPassword('');
+    setDemoResetOtp(null);
   }, [mode, role]);
 
   if (!mode) return null;
@@ -147,6 +166,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose, setMode, on
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setSuccessMsg(null);
     setLoading(true);
 
     try {
@@ -160,32 +180,90 @@ export const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose, setMode, on
     }
   };
 
+  const handleSendResetOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSuccessMsg(null);
+    setLoading(true);
+
+    try {
+      const res = await authApi.forgotPassword(resetEmail);
+      setDemoResetOtp(res.demo_otp || null);
+      setForgotStep('verify');
+      setSuccessMsg(`Verification code sent to ${resetEmail}!`);
+    } catch (err: any) {
+      setError(err.message || 'No registered account found with this email.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResetPasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSuccessMsg(null);
+
+    if (newPassword !== confirmPassword) {
+      setError('Passwords do not match. Please re-enter.');
+      return;
+    }
+    if (newPassword.length < 6) {
+      setError('Password must be at least 6 characters long.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await authApi.resetPassword(resetEmail, resetOtp, newPassword);
+      setSuccessMsg('Password has been reset successfully! Please log in.');
+      setEmail(resetEmail);
+      setPassword('');
+      setAuthView('login');
+      setForgotStep('request');
+      setResetOtp('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setDemoResetOtp(null);
+    } catch (err: any) {
+      setError(err.message || 'Failed to reset password. Please verify the code.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const fillDemo = (roleChoice: UserRole, demoEmail: string) => {
     setRole(roleChoice);
     setEmail(demoEmail);
     setPassword('Password123!');
   };
 
+  const getModalTitle = () => {
+    if (authView === 'forgot') {
+      return forgotStep === 'request' ? 'Reset your password' : 'Set new password';
+    }
+    if (authView === 'login') {
+      return 'Log in to Confluence';
+    }
+    return otpStep ? 'Verify your email' : 'Create your account';
+  };
+
   return (
-    <Modal
-      open={!!mode}
-      onClose={onClose}
-      title={
-        mode === 'login'
-          ? 'Log in to Confluence'
-          : otpStep
-          ? 'Verify your email'
-          : 'Create your account'
-      }
-    >
+    <Modal open={!!mode} onClose={onClose} title={getModalTitle()}>
       {error && (
         <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium mb-3">
           {error}
         </div>
       )}
 
+      {successMsg && (
+        <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-medium mb-3 flex items-center gap-1.5">
+          <span>✅</span>
+          <span>{successMsg}</span>
+        </div>
+      )}
+
       {/* 1. LOGIN FORM */}
-      {mode === 'login' && (
+      {authView === 'login' && (
         <form onSubmit={handleLoginSubmit} className="space-y-3">
           <div>
             <label className="text-xs font-semibold text-[var(--text-muted)]">I am logging in as…</label>
@@ -214,7 +292,22 @@ export const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose, setMode, on
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-[var(--text-muted)]">Password</label>
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold text-[var(--text-muted)]">Password</label>
+              <button
+                type="button"
+                onClick={() => {
+                  setAuthView('forgot');
+                  setForgotStep('request');
+                  setResetEmail(email);
+                  setError(null);
+                  setSuccessMsg(null);
+                }}
+                className="text-xs text-deepblue hover:underline font-semibold"
+              >
+                Forgot password?
+              </button>
+            </div>
             <input
               type="password"
               required
@@ -268,8 +361,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose, setMode, on
             New here?{' '}
             <button
               type="button"
-              className="font-semibold underline underline-offset-2"
-              onClick={() => setMode('register')}
+              className="font-semibold underline underline-offset-2 text-deepblue"
+              onClick={() => {
+                setMode('register');
+                setAuthView('register');
+                setError(null);
+                setSuccessMsg(null);
+              }}
             >
               Register
             </button>
@@ -278,7 +376,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose, setMode, on
       )}
 
       {/* 2. REGISTRATION STEP 1: FILL DETAILS & SEND OTP */}
-      {mode === 'register' && !otpStep && (
+      {authView === 'register' && !otpStep && (
         <form onSubmit={handleSendOtp} className="space-y-3">
           <div>
             <label className="text-xs font-semibold text-[var(--text-muted)]">I am registering as…</label>
@@ -299,73 +397,99 @@ export const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose, setMode, on
               {role === 'industry' ? 'Company Name' : role === 'institute' ? 'Institute Name' : 'Full Name'}
             </label>
             <input
+              type="text"
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="w-full mt-1 rounded-xl border border-[var(--border)] px-3 py-2 text-sm focus-ring bg-white text-black placeholder-gray-400"
-              placeholder={role === 'industry' ? 'e.g. Acme Tech' : 'e.g. Aditi Sharma'}
+              placeholder={
+                role === 'industry'
+                  ? 'Adora Technologies'
+                  : role === 'institute'
+                  ? 'MSU Baroda'
+                  : role === 'academician'
+                  ? 'Dr. Rajesh Sharma'
+                  : 'Kareena Kapoor'
+              }
             />
           </div>
 
-          {/* College Dropdown for Students & Academicians */}
-          {(role === 'student' || role === 'academician') && (
-            <div>
-              <label className="text-xs font-semibold text-[var(--text-muted)]">College / University</label>
-              <select
-                value={selectedInstituteId}
-                onChange={(e) => setSelectedInstituteId(e.target.value)}
-                className="w-full mt-1 rounded-xl border border-[var(--border)] px-3 py-2 text-sm focus-ring bg-white text-black font-medium"
-              >
-                {institutes.map((inst) => (
-                  <option key={inst.id} value={String(inst.id)}>
-                    {inst.name}
-                  </option>
-                ))}
-                <option value="other">Other / Not Listed</option>
-              </select>
-
-              {selectedInstituteId === 'other' && (
-                <input
-                  required
-                  value={customCollege}
-                  onChange={(e) => setCustomCollege(e.target.value)}
-                  className="w-full mt-2 rounded-xl border border-[var(--border)] px-3 py-2 text-sm focus-ring bg-white text-black placeholder-gray-400"
-                  placeholder="Enter your college name manually"
-                />
-              )}
-            </div>
-          )}
+          <div>
+            <label className="text-xs font-semibold text-[var(--text-muted)]">Official Email</label>
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full mt-1 rounded-xl border border-[var(--border)] px-3 py-2 text-sm focus-ring bg-white text-black placeholder-gray-400"
+              placeholder="you@university.edu or name@company.com"
+            />
+          </div>
 
           {/* Student Specific Fields */}
           {role === 'student' && (
             <>
               <div>
-                <label className="text-xs font-semibold text-[var(--text-muted)]">University Roll No. / Student ID</label>
-                <input
-                  value={universityRollNo}
-                  onChange={(e) => setUniversityRollNo(e.target.value)}
-                  className="w-full mt-1 rounded-xl border border-[var(--border)] px-3 py-2 text-sm focus-ring bg-white text-black placeholder-gray-400"
-                  placeholder="e.g. 2026-CS-042"
-                />
+                <label className="text-xs font-semibold text-[var(--text-muted)]">College / University</label>
+                <select
+                  value={selectedInstituteId}
+                  onChange={(e) => setSelectedInstituteId(e.target.value)}
+                  className="w-full mt-1 rounded-xl border border-[var(--border)] px-3 py-2 text-sm focus-ring bg-white text-black font-medium"
+                >
+                  {institutes.map((inst) => (
+                    <option key={inst.id} value={String(inst.id)}>
+                      {inst.name}
+                    </option>
+                  ))}
+                  <option value="other">Other / Not Listed</option>
+                </select>
+              </div>
+
+              {selectedInstituteId === 'other' && (
+                <div>
+                  <label className="text-xs font-semibold text-[var(--text-muted)]">Enter Institute Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={customCollege}
+                    onChange={(e) => setCustomCollege(e.target.value)}
+                    className="w-full mt-1 rounded-xl border border-[var(--border)] px-3 py-2 text-sm focus-ring bg-white text-black"
+                    placeholder="e.g. Indian Institute of Technology Bombay"
+                  />
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs font-semibold text-[var(--text-muted)]">University Roll No</label>
+                  <input
+                    type="text"
+                    value={universityRollNo}
+                    onChange={(e) => setUniversityRollNo(e.target.value)}
+                    className="w-full mt-1 rounded-xl border border-[var(--border)] px-3 py-2 text-sm focus-ring bg-white text-black placeholder-gray-400"
+                    placeholder="e.g. 2024CS104"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-[var(--text-muted)]">Desired Role</label>
+                  <input
+                    type="text"
+                    value={desiredRole}
+                    onChange={(e) => setDesiredRole(e.target.value)}
+                    className="w-full mt-1 rounded-xl border border-[var(--border)] px-3 py-2 text-sm focus-ring bg-white text-black placeholder-gray-400"
+                    placeholder="AI Engineer, Full Stack…"
+                  />
+                </div>
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-[var(--text-muted)]">Target Role / Career Goal</label>
+                <label className="text-xs font-semibold text-[var(--text-muted)]">Primary Skills (comma-separated)</label>
                 <input
-                  value={desiredRole}
-                  onChange={(e) => setDesiredRole(e.target.value)}
-                  className="w-full mt-1 rounded-xl border border-[var(--border)] px-3 py-2 text-sm focus-ring bg-white text-black placeholder-gray-400"
-                  placeholder="e.g. Full Stack Developer, AI Specialist"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold text-[var(--text-muted)]">Known Skills & Tech Interests</label>
-                <input
+                  type="text"
                   value={skills}
                   onChange={(e) => setSkills(e.target.value)}
                   className="w-full mt-1 rounded-xl border border-[var(--border)] px-3 py-2 text-sm focus-ring bg-white text-black placeholder-gray-400"
-                  placeholder="e.g. Python, SQL, React, Data Structures"
+                  placeholder="Python, React, Machine Learning, SQL"
                 />
               </div>
             </>
@@ -375,57 +499,66 @@ export const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose, setMode, on
           {role === 'academician' && (
             <>
               <div>
-                <label className="text-xs font-semibold text-[var(--text-muted)]">Department</label>
-                <input
-                  value={department}
-                  onChange={(e) => setDepartment(e.target.value)}
-                  className="w-full mt-1 rounded-xl border border-[var(--border)] px-3 py-2 text-sm focus-ring bg-white text-black placeholder-gray-400"
-                  placeholder="e.g. Dept. of Computer Science & Engineering"
-                />
+                <label className="text-xs font-semibold text-[var(--text-muted)]">Institution</label>
+                <select
+                  value={selectedInstituteId}
+                  onChange={(e) => setSelectedInstituteId(e.target.value)}
+                  className="w-full mt-1 rounded-xl border border-[var(--border)] px-3 py-2 text-sm focus-ring bg-white text-black font-medium"
+                >
+                  {institutes.map((inst) => (
+                    <option key={inst.id} value={String(inst.id)}>
+                      {inst.name}
+                    </option>
+                  ))}
+                  <option value="other">Other / Independent</option>
+                </select>
               </div>
 
-              <div>
-                <label className="text-xs font-semibold text-[var(--text-muted)]">Research Domain / Expertise</label>
-                <input
-                  value={expertiseDomain}
-                  onChange={(e) => setExpertiseDomain(e.target.value)}
-                  className="w-full mt-1 rounded-xl border border-[var(--border)] px-3 py-2 text-sm focus-ring bg-white text-black placeholder-gray-400"
-                  placeholder="e.g. Distributed Systems, Machine Learning"
-                />
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs font-semibold text-[var(--text-muted)]">Department</label>
+                  <input
+                    type="text"
+                    value={department}
+                    onChange={(e) => setDepartment(e.target.value)}
+                    className="w-full mt-1 rounded-xl border border-[var(--border)] px-3 py-2 text-sm focus-ring bg-white text-black placeholder-gray-400"
+                    placeholder="Computer Science"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-[var(--text-muted)]">Research Domain</label>
+                  <input
+                    type="text"
+                    value={expertiseDomain}
+                    onChange={(e) => setExpertiseDomain(e.target.value)}
+                    className="w-full mt-1 rounded-xl border border-[var(--border)] px-3 py-2 text-sm focus-ring bg-white text-black placeholder-gray-400"
+                    placeholder="NLP, Distributed Systems"
+                  />
+                </div>
               </div>
             </>
           )}
 
-          {/* Institute Specific Fields */}
+          {/* Institute Admin Specific Fields */}
           {role === 'institute' && (
             <div>
-              <label className="text-xs font-semibold text-[var(--text-muted)]">Placement Cell / TPO Contact Details</label>
+              <label className="text-xs font-semibold text-[var(--text-muted)]">TPO Contact Email / Phone</label>
               <input
+                type="text"
                 value={adminTpoContact}
                 onChange={(e) => setAdminTpoContact(e.target.value)}
                 className="w-full mt-1 rounded-xl border border-[var(--border)] px-3 py-2 text-sm focus-ring bg-white text-black placeholder-gray-400"
-                placeholder="e.g. Dr. K. Sharma (TPO Head), tpo@univ.edu"
+                placeholder="tpo@university.edu | +91-9876543210"
               />
             </div>
           )}
 
           <div>
-            <label className="text-xs font-semibold text-[var(--text-muted)]">Email Address</label>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full mt-1 rounded-xl border border-[var(--border)] px-3 py-2 text-sm focus-ring bg-white text-black placeholder-gray-400"
-              placeholder="you@university.edu"
-            />
-          </div>
-
-          <div>
-            <label className="text-xs font-semibold text-[var(--text-muted)]">Password</label>
+            <label className="text-xs font-semibold text-[var(--text-muted)]">Choose Password</label>
             <input
               type="password"
               required
+              minLength={6}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full mt-1 rounded-xl border border-[var(--border)] px-3 py-2 text-sm focus-ring bg-white text-black placeholder-gray-400"
@@ -441,8 +574,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose, setMode, on
             Already registered?{' '}
             <button
               type="button"
-              className="font-semibold underline underline-offset-2"
-              onClick={() => setMode('login')}
+              className="font-semibold underline underline-offset-2 text-deepblue"
+              onClick={() => {
+                setMode('login');
+                setAuthView('login');
+                setError(null);
+                setSuccessMsg(null);
+              }}
             >
               Log in
             </button>
@@ -450,8 +588,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose, setMode, on
         </form>
       )}
 
-      {/* 3. REGISTRATION STEP 2: ENTER OTP & COMPLETE ACCOUNT */}
-      {mode === 'register' && otpStep && (
+      {/* 2. REGISTRATION STEP 2: ENTER OTP & COMPLETE ACCOUNT */}
+      {authView === 'register' && otpStep && (
         <form onSubmit={handleFinalSignup} className="space-y-4">
           <div className="text-center py-2">
             <div className="text-sm font-semibold">Check your email</div>
@@ -505,6 +643,145 @@ export const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose, setMode, on
             </button>
           </div>
         </form>
+      )}
+
+      {/* 3. FORGOT / RESET PASSWORD FLOW */}
+      {authView === 'forgot' && (
+        <div>
+          {forgotStep === 'request' && (
+            <form onSubmit={handleSendResetOtp} className="space-y-3">
+              <p className="text-xs text-[var(--text-muted)] leading-relaxed">
+                Enter your account email address below. We'll send a 6-digit verification code to reset your password.
+              </p>
+
+              <div>
+                <label className="text-xs font-semibold text-[var(--text-muted)]">Account Email</label>
+                <input
+                  type="email"
+                  required
+                  value={resetEmail}
+                  onChange={(e) => setResetEmail(e.target.value)}
+                  className="w-full mt-1 rounded-xl border border-[var(--border)] px-3 py-2.5 text-sm focus-ring bg-white text-black placeholder-gray-400"
+                  placeholder="name@college.edu or name@company.com"
+                />
+              </div>
+
+              <Button variant="primary" type="submit" className="w-full mt-2" disabled={loading}>
+                {loading ? 'Sending code…' : 'Send Reset Code'}
+              </Button>
+
+              <p className="text-xs text-center text-[var(--text-muted)] pt-1">
+                Remember your password?{' '}
+                <button
+                  type="button"
+                  className="font-semibold underline underline-offset-2 text-deepblue"
+                  onClick={() => {
+                    setAuthView('login');
+                    setError(null);
+                    setSuccessMsg(null);
+                  }}
+                >
+                  Back to Log in
+                </button>
+              </p>
+            </form>
+          )}
+
+          {forgotStep === 'verify' && (
+            <form onSubmit={handleResetPasswordSubmit} className="space-y-3">
+              <div className="flex items-center justify-between text-xs text-[var(--text-muted)]">
+                <span>Code sent to: <strong className="text-[var(--text-main)]">{resetEmail}</strong></span>
+                <button
+                  type="button"
+                  onClick={() => setForgotStep('request')}
+                  className="text-deepblue underline text-[11px]"
+                >
+                  Change
+                </button>
+              </div>
+
+              {demoResetOtp && (
+                <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-between">
+                  <span className="text-xs text-emerald-800 font-medium">
+                    Demo Code: <strong className="font-mono text-sm tracking-wider">{demoResetOtp}</strong>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setResetOtp(demoResetOtp)}
+                    className="text-[11px] font-bold px-2 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700"
+                  >
+                    Auto-Fill
+                  </button>
+                </div>
+              )}
+
+              <div>
+                <label className="text-xs font-semibold text-[var(--text-muted)]">6-Digit Verification Code</label>
+                <input
+                  type="text"
+                  required
+                  maxLength={6}
+                  value={resetOtp}
+                  onChange={(e) => setResetOtp(e.target.value.trim())}
+                  className="w-full mt-1 rounded-xl border border-[var(--border)] px-3 py-2.5 text-center font-mono text-lg tracking-widest focus-ring bg-white text-black"
+                  placeholder="123456"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-[var(--text-muted)]">New Password</label>
+                <input
+                  type="password"
+                  required
+                  minLength={6}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="w-full mt-1 rounded-xl border border-[var(--border)] px-3 py-2.5 text-sm focus-ring bg-white text-black placeholder-gray-400"
+                  placeholder="At least 6 characters"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-[var(--text-muted)]">Confirm New Password</label>
+                <input
+                  type="password"
+                  required
+                  minLength={6}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full mt-1 rounded-xl border border-[var(--border)] px-3 py-2.5 text-sm focus-ring bg-white text-black placeholder-gray-400"
+                  placeholder="Confirm password"
+                />
+              </div>
+
+              <Button variant="primary" type="submit" className="w-full mt-2" disabled={loading || resetOtp.length < 6}>
+                {loading ? 'Resetting password…' : 'Reset Password'}
+              </Button>
+
+              <div className="flex items-center justify-between text-xs text-[var(--text-muted)] pt-1">
+                <button
+                  type="button"
+                  onClick={handleSendResetOtp}
+                  disabled={loading}
+                  className="hover:underline text-deepblue"
+                >
+                  Resend code
+                </button>
+                <button
+                  type="button"
+                  className="font-semibold underline underline-offset-2 text-deepblue"
+                  onClick={() => {
+                    setAuthView('login');
+                    setError(null);
+                    setSuccessMsg(null);
+                  }}
+                >
+                  Back to Log in
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
       )}
     </Modal>
   );

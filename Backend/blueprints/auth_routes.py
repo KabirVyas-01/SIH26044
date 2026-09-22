@@ -419,3 +419,148 @@ def verify_otp():
     # Clean up after successful verification
     del OTP_STORE[email]
     return jsonify({'message': 'Email verified successfully!'}), 200
+
+RESET_OTP_STORE = {}
+
+def send_password_reset_email(to_email: str, otp_code: str) -> bool:
+    """Attempts to dispatch an actual password reset email via SMTP if credentials are configured."""
+    smtp_email = getattr(Config, 'SMTP_EMAIL', '')
+    smtp_password = getattr(Config, 'SMTP_PASSWORD', '').replace(' ', '')
+    smtp_server = getattr(Config, 'SMTP_SERVER', 'smtp.gmail.com')
+    smtp_port = int(getattr(Config, 'SMTP_PORT', 587))
+
+    if not smtp_email or not smtp_password:
+        print(f"[Password Reset Dispatcher] SMTP credentials not set in config.py. Reset OTP for {to_email} is: {otp_code}")
+        return False
+
+    try:
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = f"{otp_code} is your Confluence Password Reset Code"
+        msg['From'] = f"Confluence Security <{smtp_email}>"
+        msg['To'] = to_email
+
+        html_content = f"""
+        <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; border: 1px solid #E1D6AE; border-radius: 12px; background-color: #FDFBF7;">
+            <h2 style="color: #2C3524; margin-bottom: 8px;">Confluence Password Reset</h2>
+            <p style="color: #6B7660; font-size: 14px;">We received a request to reset your Confluence account password. Use the following 6-digit code:</p>
+            <div style="margin: 24px 0; padding: 14px; background: #2C3524; color: #F2E8CF; font-size: 28px; font-weight: bold; letter-spacing: 6px; text-align: center; border-radius: 8px;">
+                {otp_code}
+            </div>
+            <p style="color: #6B7660; font-size: 12px;">This code will expire in 10 minutes. If you did not request a password reset, please ignore this email.</p>
+        </div>
+        """
+        msg.attach(MIMEText(html_content, 'html'))
+
+        server = smtplib.SMTP(smtp_server, smtp_port, timeout=10)
+        server.starttls()
+        server.login(smtp_email, smtp_password)
+        server.sendmail(smtp_email, to_email, msg.as_string())
+        server.quit()
+        print(f"[Password Reset Dispatcher] Successfully sent reset email to {to_email}!")
+        return True
+    except Exception as e:
+        print(f"[Password Reset Dispatcher Error] Could not send reset email to {to_email}: {e}")
+        return False
+
+@auth_bp.route('/forgot-password', methods=['POST'])
+def forgot_password():
+    """Initiates password reset by sending a 6-digit OTP to the user's email."""
+    data = request.get_json() or {}
+    email = data.get('email', '').strip().lower()
+    if not email or '@' not in email:
+        return jsonify({'error': 'A valid email address is required.'}), 400
+
+    conn = get_db()
+    cursor = conn.cursor()
+    user_found = False
+    stakeholder_table = None
+
+    # Search all stakeholder tables to find the account
+    for tbl in ['students', 'industries', 'institutes', 'academicians']:
+        cursor.execute(f"SELECT id, email FROM {tbl} WHERE LOWER(email) = LOWER(?)", (email,))
+        row = cursor.fetchone()
+        if row:
+            user_found = True
+            stakeholder_table = tbl
+            break
+    conn.close()
+
+    if not user_found:
+        return jsonify({'error': 'No registered account found with this email address.'}), 404
+
+    otp_code = str(random.randint(100000, 999999))
+    expires_at = time.time() + 600  # 10 minutes
+    RESET_OTP_STORE[email] = {
+        'otp': otp_code,
+        'expires_at': expires_at,
+        'table': stakeholder_table
+    }
+
+    domain = email.split('@')[-1]
+    is_demo = domain in DEMO_DOMAINS or 'demo' in email or 'test' in email
+
+    # Send real email via SMTP if configured
+    email_dispatched = send_password_reset_email(email, otp_code)
+
+    payload = {
+        'message': f'Password reset OTP sent to {email}!'
+    }
+    if is_demo or not email_dispatched:
+        payload['demo_otp'] = otp_code
+        payload['is_demo'] = True
+    else:
+        payload['is_demo'] = False
+
+    return jsonify(payload), 200
+
+@auth_bp.route('/reset-password', methods=['POST'])
+def reset_password():
+    """Verifies OTP and resets the user's password across all stakeholder tables."""
+    data = request.get_json() or {}
+    email = data.get('email', '').strip().lower()
+    otp = data.get('otp', '').strip()
+    new_password = data.get('new_password', '').strip()
+
+    if not email or not otp or not new_password:
+        return jsonify({'error': 'Email, OTP, and new password are required.'}), 400
+
+    if len(new_password) < 6:
+        return jsonify({'error': 'Password must be at least 6 characters long.'}), 400
+
+    record = RESET_OTP_STORE.get(email)
+    if not record:
+        return jsonify({'error': 'No reset request found for this email. Please request a new code.'}), 400
+
+    if time.time() > record['expires_at']:
+        del RESET_OTP_STORE[email]
+        return jsonify({'error': 'OTP has expired. Please request a new one.'}), 400
+
+    if record['otp'] != otp:
+        return jsonify({'error': 'Invalid OTP code. Please try again.'}), 400
+
+    new_hash = hash_password(new_password)
+    target_table = record.get('table')
+
+    conn = get_db()
+    cursor = conn.cursor()
+    updated = False
+
+    tables_to_try = [target_table] if target_table else ['students', 'industries', 'institutes', 'academicians']
+    for tbl in tables_to_try:
+        if not tbl:
+            continue
+        cursor.execute(f"UPDATE {tbl} SET password_hash = ? WHERE LOWER(email) = LOWER(?)", (new_hash, email))
+        if cursor.rowcount > 0:
+            updated = True
+            break
+
+    conn.commit()
+    conn.close()
+
+    # Clear OTP after successful reset
+    del RESET_OTP_STORE[email]
+
+    if not updated:
+        return jsonify({'error': 'Account not found to update password.'}), 404
+
+    return jsonify({'message': 'Password has been successfully reset! You can now log in with your new password.'}), 200
