@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, Button, PageHeader, Tag, VerifiedBadge, ProgressBar, SkillBar, Modal } from '../common/UIComponents';
 import { ResumeScoreCard } from './StudentOverview';
 import { Student } from '../../types';
@@ -8,7 +8,8 @@ import { useAuth } from '../../context/AuthContext';
 export const StudentProfile: React.FC<{
   student: Student;
   onUpdateProfile?: (updated: Partial<Student>) => void;
-}> = ({ student, onUpdateProfile }) => {
+  onNavigate?: (tab: string) => void;
+}> = ({ student, onUpdateProfile, onNavigate }) => {
   const [editing, setEditing] = useState(false);
   const [college, setCollege] = useState(student.university);
   const [targetRole, setTargetRole] = useState(student.desiredRole || student.role);
@@ -19,7 +20,18 @@ export const StudentProfile: React.FC<{
   const [githubUrl, setGithubUrl] = useState(student.githubUrl || '');
   const [leetcodeUrl, setLeetcodeUrl] = useState(student.leetcodeUrl || '');
   const [skillsStr, setSkillsStr] = useState(student.skills.map((s) => s.name).join(', '));
+  const [apps, setApps] = useState<any[]>([]);
   const { currentUser } = useAuth();
+
+  useEffect(() => {
+    let isMounted = true;
+    studentApi.getMyApplications().then((res) => {
+      if (isMounted && res?.my_applications) {
+        setApps(res.my_applications);
+      }
+    }).catch(() => {});
+    return () => { isMounted = false; };
+  }, []);
 
   const handleSave = async () => {
     if (currentUser && currentUser.role === 'student') {
@@ -155,6 +167,46 @@ export const StudentProfile: React.FC<{
       </Card>
 
       <ResumeScoreCard student={student} />
+
+      {/* My Submitted Applications */}
+      <Card className="p-5">
+        <div className="flex items-center justify-between mb-3">
+          <div className="font-display font-semibold">My Applications</div>
+          {onNavigate && (
+            <button
+              type="button"
+              onClick={() => onNavigate('applications')}
+              className="text-xs text-sagedeep font-semibold hover:underline"
+            >
+              View all applications ({apps.length}) →
+            </button>
+          )}
+        </div>
+        {apps.length === 0 ? (
+          <p className="text-xs text-[var(--text-muted)]">
+            No active applications yet. Browse opportunities to apply!
+          </p>
+        ) : (
+          <div className="space-y-2.5">
+            {apps.slice(0, 4).map((a) => (
+              <div
+                key={a.id}
+                className="flex items-center justify-between p-3 rounded-xl bg-black/[0.02] border border-[var(--border)]"
+              >
+                <div>
+                  <div className="text-sm font-semibold text-black">{a.title}</div>
+                  <div className="text-xs text-[var(--text-muted)]">
+                    {a.company_name || a.professor_name || 'Organization'} · {a.applied_date || 'Recently applied'}
+                  </div>
+                </div>
+                <Tag tone={a.status === 'shortlisted' || a.status === 'selected' ? 'sage' : 'blue'}>
+                  {a.status === 'shortlisted' ? 'Shortlisted ✓' : a.status === 'selected' ? 'Selected 🎉' : 'Under Review'}
+                </Tag>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
 
       <div className="grid sm:grid-cols-2 gap-4">
         <Card className="p-5">

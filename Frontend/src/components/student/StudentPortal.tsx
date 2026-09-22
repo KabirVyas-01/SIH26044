@@ -5,6 +5,7 @@ import { StudentSkills } from './StudentSkills';
 import { StudentRoadmap, StudentDaily } from './StudentRoadmap';
 import { StudentAITools, StudentField } from './StudentAITools';
 import { StudentOpportunities } from './StudentOpportunities';
+import { StudentApplications } from './StudentApplications';
 import { StudentProjects } from './StudentProjects';
 import { StudentProfile } from './StudentProfile';
 import { SkillTestModal } from './SkillTestModal';
@@ -20,6 +21,7 @@ const STUDENT_TABS = [
   { key: 'aitools',       label: 'AI Tools Hub',      icon: 'zap' },
   { key: 'field',         label: 'Field Updates',     icon: 'bars' },
   { key: 'opportunities', label: 'Opportunities',     icon: 'briefcase' },
+  { key: 'applications',  label: 'Applications',      icon: 'checkc' },
   { key: 'projects',      label: 'Projects',          icon: 'file' },
   { key: 'profile',       label: 'Profile',           icon: 'user' },
 ];
@@ -196,10 +198,18 @@ export const StudentPortal: React.FC<{ go: (page: string) => void }> = ({ go }) 
         return <StudentField />;
       case 'opportunities':
         return <StudentOpportunities />;
+      case 'applications':
+        return <StudentApplications onBrowseOpportunities={() => setActive('opportunities')} />;
       case 'projects':
         return <StudentProjects student={student} />;
       case 'profile':
-        return <StudentProfile student={student} onUpdateProfile={handleUpdateProfile} />;
+        return (
+          <StudentProfile
+            student={student}
+            onUpdateProfile={handleUpdateProfile}
+            onNavigate={(t) => setActive(t)}
+          />
+        );
       default:
         return <StudentOverview student={student} onNavigate={(t) => setActive(t)} />;
     }

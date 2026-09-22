@@ -4,6 +4,7 @@ import {
   IndustryOverview,
   IndustryFilters,
   IndustryResults,
+  IndustryApplications,
   IndustryConnections,
 } from './IndustryComponents';
 import { COMPANIES } from '../../data/mockData';
@@ -13,7 +14,8 @@ const IND_TABS = [
   { key: 'overview',     label: 'Dashboard',              icon: 'home' },
   { key: 'filters',      label: 'Requirements & Filters', icon: 'filter' },
   { key: 'results',      label: 'Search Results',         icon: 'search' },
-  { key: 'connections',  label: 'Connections',          icon: 'link' },
+  { key: 'applications', label: 'Applications',           icon: 'users' },
+  { key: 'connections',  label: 'Connections',            icon: 'link' },
 ];
 
 export const IndustryPortal: React.FC<{ go: (page: string) => void }> = ({ go }) => {
@@ -48,6 +50,8 @@ export const IndustryPortal: React.FC<{ go: (page: string) => void }> = ({ go })
             setConnections={setConnections}
           />
         );
+      case 'applications':
+        return <IndustryApplications />;
       case 'connections':
         return <IndustryConnections connections={connections} />;
       default:

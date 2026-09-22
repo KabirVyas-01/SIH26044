@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { PortalShell } from '../common/PortalShell';
 import {
   AcademicianOverview,
+  AcademicianOpportunities,
   AcademicianPublish,
   AcademicianPapers,
   AcademicianDiscuss,
@@ -12,10 +13,11 @@ import { useAuth } from '../../context/AuthContext';
 import { academicianApi } from '../../api/academician';
 
 const ACAD_TABS = [
-  { key: 'overview', label: 'Profile',          icon: 'user' },
-  { key: 'publish',  label: 'Publish Research', icon: 'upload' },
-  { key: 'papers',   label: 'My Papers',        icon: 'book' },
-  { key: 'discuss',  label: 'Discussions',      icon: 'msg' },
+  { key: 'overview',      label: 'Profile',          icon: 'user' },
+  { key: 'opportunities', label: 'Opportunities',    icon: 'briefcase' },
+  { key: 'publish',       label: 'Publish Research', icon: 'upload' },
+  { key: 'papers',        label: 'My Papers',        icon: 'book' },
+  { key: 'discuss',       label: 'Discussions',      icon: 'msg' },
 ];
 
 export const AcademicianPortal: React.FC<{ go: (page: string) => void }> = ({ go }) => {
@@ -58,6 +60,8 @@ export const AcademicianPortal: React.FC<{ go: (page: string) => void }> = ({ go
     switch (active) {
       case 'overview':
         return <AcademicianOverview acad={acad} />;
+      case 'opportunities':
+        return <AcademicianOpportunities />;
       case 'publish':
         return <AcademicianPublish papers={papers} setPapers={setPapers} />;
       case 'papers':

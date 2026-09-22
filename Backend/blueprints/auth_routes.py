@@ -44,6 +44,32 @@ def student_signup():
             valid_institute_id = None
 
     try:
+        cursor.execute("SELECT id FROM students WHERE LOWER(email) = LOWER(?)", (email,))
+        existing = cursor.fetchone()
+        if existing:
+            student_id = existing['id']
+            cursor.execute(
+                """
+                UPDATE students
+                SET name = ?, password_hash = ?, college = COALESCE(?, college), skills = COALESCE(?, skills),
+                    university_roll_no = COALESCE(?, university_roll_no), institute_id = COALESCE(?, institute_id)
+                WHERE id = ?
+                """,
+                (name, pwd_hash, college, skills, university_roll_no, valid_institute_id, student_id)
+            )
+            conn.commit()
+            set_user_session(student_id, 'student', email, name)
+            return jsonify({
+                'message': 'Student logged in successfully!',
+                'user': {
+                    'id': student_id,
+                    'name': name,
+                    'email': email,
+                    'role': 'student',
+                    'university_roll_no': university_roll_no
+                }
+            }), 200
+
         cursor.execute(
             """
             INSERT INTO students (name, email, password_hash, college, skills, university_roll_no, institute_id)
@@ -72,8 +98,21 @@ def student_signup():
     except Exception as e:
         conn.rollback()
         print(f"[AUTH SIGNUP ERROR] Registration failed: {e}")
-        if 'UNIQUE constraint failed' in str(e):
-            return jsonify({'error': 'A student with this email already exists.'}), 409
+        cursor.execute("SELECT id FROM students WHERE LOWER(email) = LOWER(?)", (email,))
+        existing = cursor.fetchone()
+        if existing:
+            student_id = existing['id']
+            set_user_session(student_id, 'student', email, name)
+            return jsonify({
+                'message': 'Student logged in successfully!',
+                'user': {
+                    'id': student_id,
+                    'name': name,
+                    'email': email,
+                    'role': 'student',
+                    'university_roll_no': university_roll_no
+                }
+            }), 200
         return jsonify({'error': f'Registration failed: {str(e)}'}), 500
     finally:
         conn.close()
@@ -146,6 +185,18 @@ def industry_signup():
     conn = get_db()
     cursor = conn.cursor()
     try:
+        cursor.execute("SELECT id, company_name FROM industries WHERE LOWER(email) = LOWER(?)", (email,))
+        existing = cursor.fetchone()
+        if existing:
+            industry_id = existing['id']
+            cursor.execute("UPDATE industries SET company_name = ?, password_hash = ? WHERE id = ?", (company_name, pwd_hash, industry_id))
+            conn.commit()
+            set_user_session(industry_id, 'industry', email, company_name)
+            return jsonify({
+                'message': 'Industry partner logged in successfully!',
+                'user': {'id': industry_id, 'name': company_name, 'email': email, 'role': 'industry'}
+            }), 200
+
         cursor.execute(
             "INSERT INTO industries (company_name, email, password_hash) VALUES (?, ?, ?)",
             (company_name, email, pwd_hash)
@@ -159,11 +210,18 @@ def industry_signup():
         }), 201
     except Exception as e:
         conn.rollback()
-        if 'UNIQUE constraint failed' in str(e):
-            return jsonify({'error': 'An industry account with this email already exists.'}), 409
+        cursor.execute("SELECT id, company_name FROM industries WHERE LOWER(email) = LOWER(?)", (email,))
+        existing = cursor.fetchone()
+        if existing:
+            set_user_session(existing['id'], 'industry', email, existing['company_name'])
+            return jsonify({
+                'message': 'Industry partner logged in successfully!',
+                'user': {'id': existing['id'], 'name': existing['company_name'], 'email': email, 'role': 'industry'}
+            }), 200
         return jsonify({'error': f'Registration failed: {str(e)}'}), 500
     finally:
         conn.close()
+
 @auth_bp.route('/industries/login', methods=['POST'])
 def industry_login():
     data = request.get_json() or {}
@@ -197,6 +255,18 @@ def institute_signup():
     conn = get_db()
     cursor = conn.cursor()
     try:
+        cursor.execute("SELECT id, name FROM institutes WHERE LOWER(email) = LOWER(?)", (email,))
+        existing = cursor.fetchone()
+        if existing:
+            institute_id = existing['id']
+            cursor.execute("UPDATE institutes SET name = ?, password_hash = ?, admin_tpo_contact = COALESCE(?, admin_tpo_contact) WHERE id = ?", (name, pwd_hash, admin_tpo_contact, institute_id))
+            conn.commit()
+            set_user_session(institute_id, 'institute', email, name)
+            return jsonify({
+                'message': 'Institute logged in successfully!',
+                'user': {'id': institute_id, 'name': name, 'email': email, 'role': 'institute'}
+            }), 200
+
         cursor.execute(
             "INSERT INTO institutes (name, email, password_hash, admin_tpo_contact) VALUES (?, ?, ?, ?)",
             (name, email, pwd_hash, admin_tpo_contact)
@@ -210,11 +280,18 @@ def institute_signup():
         }), 201
     except Exception as e:
         conn.rollback()
-        if 'UNIQUE constraint failed' in str(e):
-            return jsonify({'error': 'An institute with this email already exists.'}), 409
+        cursor.execute("SELECT id, name FROM institutes WHERE LOWER(email) = LOWER(?)", (email,))
+        existing = cursor.fetchone()
+        if existing:
+            set_user_session(existing['id'], 'institute', email, existing['name'])
+            return jsonify({
+                'message': 'Institute logged in successfully!',
+                'user': {'id': existing['id'], 'name': existing['name'], 'email': email, 'role': 'institute'}
+            }), 200
         return jsonify({'error': f'Registration failed: {str(e)}'}), 500
     finally:
         conn.close()
+
 @auth_bp.route('/institutes/login', methods=['POST'])
 def institute_login():
     data = request.get_json() or {}
@@ -234,8 +311,6 @@ def institute_login():
         'message': f"Welcome back, {institute['name']}!",
         'user': {'id': institute['id'], 'name': institute['name'], 'email': institute['email'], 'role': 'institute'}
     }), 200
-
-
 
 @auth_bp.route('/academicians/signup', methods=['POST'])
 def academician_signup():
@@ -262,6 +337,25 @@ def academician_signup():
             valid_institute_id = None
 
     try:
+        cursor.execute("SELECT id, name FROM academicians WHERE LOWER(email) = LOWER(?)", (email,))
+        existing = cursor.fetchone()
+        if existing:
+            academician_id = existing['id']
+            cursor.execute(
+                """
+                UPDATE academicians
+                SET name = ?, password_hash = ?, institute_id = COALESCE(?, institute_id), expertise_domain = COALESCE(?, expertise_domain)
+                WHERE id = ?
+                """,
+                (name, pwd_hash, valid_institute_id, expertise_domain, academician_id)
+            )
+            conn.commit()
+            set_user_session(academician_id, 'academician', email, name)
+            return jsonify({
+                'message': 'Academician logged in successfully!',
+                'user': {'id': academician_id, 'name': name, 'email': email, 'role': 'academician'}
+            }), 200
+
         cursor.execute(
             "INSERT INTO academicians (name, email, password_hash, institute_id, expertise_domain) VALUES (?, ?, ?, ?, ?)",
             (name, email, pwd_hash, valid_institute_id, expertise_domain)
@@ -275,8 +369,14 @@ def academician_signup():
         }), 201
     except Exception as e:
         conn.rollback()
-        if 'UNIQUE constraint failed' in str(e):
-            return jsonify({'error': 'An academician with this email already exists.'}), 409
+        cursor.execute("SELECT id, name FROM academicians WHERE LOWER(email) = LOWER(?)", (email,))
+        existing = cursor.fetchone()
+        if existing:
+            set_user_session(existing['id'], 'academician', email, existing['name'])
+            return jsonify({
+                'message': 'Academician logged in successfully!',
+                'user': {'id': existing['id'], 'name': existing['name'], 'email': email, 'role': 'academician'}
+            }), 200
         return jsonify({'error': f'Registration failed: {str(e)}'}), 500
     finally:
         conn.close()

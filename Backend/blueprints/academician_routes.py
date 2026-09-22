@@ -4,7 +4,10 @@ from auth_utils import role_required
 
 academician_bp = Blueprint('academician', __name__, url_prefix='/api/academician')
 
-ALLOWED_ACADEMIC_POSTING_TYPES = {'research_collaboration', 'fdp', 'project', 'mentorship'}
+ALLOWED_ACADEMIC_POSTING_TYPES = {
+    'research_collaboration', 'fdp', 'project', 'mentorship',
+    'internship', 'opportunity', 'research', 'fellowship', 'research_assistantship'
+}
 
 def row_to_dict(row):
     if row is None:
@@ -17,16 +20,16 @@ def create_posting():
     academician_id = session['user_id']
     data = request.get_json() or {}
 
-    title = data.get('title', '').strip()
-    description = data.get('description', '').strip()
-    required_skills = data.get('required_skills', '').strip()
+    title = data.get('title', '').strip() or data.get('opportunity_title', '').strip()
+    description = data.get('description', '').strip() or 'Research and academic project opportunity for students.'
+    required_skills = data.get('required_skills', '').strip() or data.get('skills', '').strip() or 'Research, Problem Solving'
     posting_type = data.get('posting_type', '').strip().lower()
 
-    if not title or not description or not required_skills or not posting_type:
-        return jsonify({'error': 'title, description, required_skills, and posting_type are required.'}), 400
+    if not title:
+        return jsonify({'error': 'Opportunity title is required.'}), 400
 
-    if posting_type not in ALLOWED_ACADEMIC_POSTING_TYPES:
-        return jsonify({'error': f'Invalid type. Allowed: {list(ALLOWED_ACADEMIC_POSTING_TYPES)}'}), 400
+    if not posting_type or posting_type not in ALLOWED_ACADEMIC_POSTING_TYPES:
+        posting_type = 'project'
 
     conn = get_db()
     cursor = conn.cursor()

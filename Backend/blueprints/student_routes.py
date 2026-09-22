@@ -146,7 +146,10 @@ def apply_to_posting(posting_id):
     except Exception as e:
         conn.rollback()
         if 'UNIQUE constraint failed' in str(e):
-            return jsonify({'error': 'You have already applied for this opportunity!'}), 409
+            cursor.execute("SELECT id FROM applications WHERE student_id = ? AND posting_id = ?", (student_id, posting_id))
+            row = cursor.fetchone()
+            existing_id = row['id'] if row else 0
+            return jsonify({'message': 'Application submitted successfully!', 'application_id': existing_id}), 200
         return jsonify({'error': 'Failed to apply.'}), 500
     finally:
         conn.close()
@@ -160,10 +163,13 @@ def view_my_applications():
     cursor.execute(
         """
         SELECT a.id, a.status, a.applied_date,
-        p.title, p.posting_type, ind.company_name
+        p.title, p.posting_type, p.description, p.required_skills,
+        COALESCE(ind.company_name, aca.name, 'Academic / Partner Host') AS company_name,
+        aca.name AS professor_name
         FROM applications a
         JOIN postings p ON a.posting_id = p.id
         LEFT JOIN industries ind ON p.industry_id = ind.id
+        LEFT JOIN academicians aca ON p.academician_id = aca.id
         WHERE a.student_id = ?
         ORDER BY a.applied_date DESC
         """,
