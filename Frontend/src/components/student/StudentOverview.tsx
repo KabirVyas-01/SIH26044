@@ -63,7 +63,7 @@ export const StudentOverview: React.FC<{ student: Student }> = ({ student }) => 
         action={student.verified ? <VerifiedBadge /> : undefined}
       />
 
-      <div className="grid sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
         <StatBlock
           label="Resume score"
           value={student.resumeScore > 0 ? `${student.resumeScore}/10` : 'Pending'}

@@ -87,7 +87,7 @@ export const StudentAITools: React.FC = () => {
       />
 
       {/* Tool Selector Tabs */}
-      <div className="flex gap-2 border-b border-[var(--border)] pb-3">
+      <div className="flex gap-2 border-b border-[var(--border)] pb-3 hscroll no-scrollbar whitespace-nowrap">
         <button
           type="button"
           onClick={() => setActiveTool('resume')}
