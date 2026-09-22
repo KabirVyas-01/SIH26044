@@ -8,7 +8,7 @@ import { StudentOpportunities } from './StudentOpportunities';
 import { StudentProjects } from './StudentProjects';
 import { StudentProfile } from './StudentProfile';
 import { SkillTestModal } from './SkillTestModal';
-import { Student } from '../../types';
+import { Student, SkillItem } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { studentApi } from '../../api/student';
 
@@ -57,21 +57,57 @@ export const StudentPortal: React.FC<{ go: (page: string) => void }> = ({ go }) 
           const res = await studentApi.getProfile();
           if (res && res.profile) {
             const p = res.profile;
-            const realSkills = (p.verified_skills || []).map((s: any) => ({
-              name: s.skill_name,
-              score: Math.round(s.percentage),
-              min: 70,
-            }));
+            const verifiedList = p.verified_skills || [];
+            const verifiedMap = new Map<string, number>();
+            verifiedList.forEach((s: any) => {
+              verifiedMap.set(s.skill_name.toLowerCase(), Math.round(s.percentage));
+            });
+
+            // Parse student's declared skills from profile (e.g. "React, SQL, Java")
+            const declaredNames: string[] = p.skills
+              ? p.skills.split(',').map((s: string) => s.trim()).filter(Boolean)
+              : [];
+
+            // Combine declared skills and any verified skills
+            const combinedSkillMap = new Map<string, SkillItem>();
+
+            // 1. Add student's declared skills
+            declaredNames.forEach((name: string) => {
+              const lower = name.toLowerCase();
+              const score = verifiedMap.get(lower) ?? 0;
+              combinedSkillMap.set(lower, {
+                name: name,
+                score: score,
+                min: 70,
+                isVerified: score >= 70,
+              });
+            });
+
+            // 2. Also add any verified skills not in declared list
+            verifiedList.forEach((s: any) => {
+              const lower = s.skill_name.toLowerCase();
+              if (!combinedSkillMap.has(lower)) {
+                combinedSkillMap.set(lower, {
+                  name: s.skill_name,
+                  score: Math.round(s.percentage),
+                  min: 70,
+                  isVerified: Math.round(s.percentage) >= 70,
+                });
+              }
+            });
+
+            const allSkills = Array.from(combinedSkillMap.values());
+            const verifiedSkillsCount = allSkills.filter((s) => s.isVerified).length;
 
             // Calculate real resume score out of 10 based on actual verified skills
             const realResumeScore =
-              realSkills.length > 0
-                ? +(Math.min(10, 4.0 + realSkills.length * 1.5)).toFixed(1)
+              verifiedSkillsCount > 0
+                ? +(Math.min(10, 4.0 + verifiedSkillsCount * 1.5)).toFixed(1)
                 : 0;
 
             const realPotential =
-              realSkills.length > 0
-                ? Math.min(100, 50 + realSkills.length * 12)
+              verifiedSkillsCount > 0
+                ? Math.min(100, 50 + verifiedSkillsCount * 12)
                 : 0;
 
             setStudent((prev) => ({
@@ -80,9 +116,14 @@ export const StudentPortal: React.FC<{ go: (page: string) => void }> = ({ go }) 
               name: p.name || currentUser.name || prev.name,
               university: p.college || prev.university,
               verified: p.is_verified || false,
-              skills: realSkills, // Empty [] if new student, real skills if tests taken!
+              skills: allSkills,
               resumeScore: realResumeScore,
               potential: realPotential,
+              desiredRole: p.desired_role || prev.desiredRole,
+              githubUrl: p.github_url || prev.githubUrl,
+              leetcodeUrl: p.leetcode_url || prev.leetcodeUrl,
+              resumeUrl: p.resume_url || prev.resumeUrl,
+              universityRollNo: p.university_roll_no || prev.universityRollNo,
             }));
           }
         } catch {
@@ -154,24 +195,48 @@ export const StudentPortal: React.FC<{ go: (page: string) => void }> = ({ go }) 
       go={go}
       subtitle={student.university}
     >
-      {/* Onboarding Banner for New Students with 0 Verified Skills */}
-      {student.skills.length === 0 && (
-        <div className="mb-6 p-4 rounded-2xl bg-amber-50 border border-amber-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div>
-            <div className="text-sm font-semibold text-amber-900">
-              ⚡ Action Required: Complete your Initial Skill Assessment
+      {/* Dynamic Skill Verification Banner based on Student's Actual Skills */}
+      {!student.skills.some((s) => s.isVerified || s.score >= 70) && (
+        <div className="mb-6 p-4 rounded-2xl bg-amber-50 border border-amber-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3.5">
+          <div className="flex-1">
+            <div className="text-sm font-bold text-amber-900 flex items-center gap-1.5">
+              <span>⚡</span> Action Required: Verify your first technical skill
             </div>
-            <p className="text-xs text-amber-700 mt-0.5">
-              Your profile currently has 0 verified skills. Take your first 5-question test to earn your verified badge and calculate your real resume score!
+            <p className="text-xs text-amber-800 mt-0.5 leading-relaxed">
+              {student.skills.length > 0
+                ? 'Select one of your registered skills below to take a 10-minute assessment, earn your verified badge, and calculate your resume score:'
+                : 'Take an assessment in your primary skill to earn your verified badge and calculate your real resume score:'}
             </p>
+
+            {/* If student declared skills, show their actual skills as buttons */}
+            {student.skills.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5 mt-2.5">
+                {student.skills.map((s) => (
+                  <button
+                    key={s.name}
+                    type="button"
+                    onClick={() => setOnboardingSkill(s.name)}
+                    className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-white border border-amber-300 text-amber-900 hover:bg-amber-100 hover:border-amber-400 shadow-sm transition"
+                  >
+                    Verify {s.name} →
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-1.5 mt-2.5">
+                {['React', 'SQL', 'Java', 'Python', 'Web Development'].map((sk) => (
+                  <button
+                    key={sk}
+                    type="button"
+                    onClick={() => setOnboardingSkill(sk)}
+                    className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-white border border-amber-300 text-amber-900 hover:bg-amber-100 transition shadow-sm"
+                  >
+                    Verify {sk} →
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
-          <button
-            type="button"
-            onClick={() => setOnboardingSkill('Python')}
-            className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold shrink-0 shadow-sm"
-          >
-            Start Python Assessment →
-          </button>
         </div>
       )}
 
@@ -180,7 +245,7 @@ export const StudentPortal: React.FC<{ go: (page: string) => void }> = ({ go }) 
       {/* Quick Launch Assessment Modal */}
       <SkillTestModal
         open={!!onboardingSkill}
-        skill={onboardingSkill || 'Python'}
+        skill={onboardingSkill}
         onClose={() => setOnboardingSkill(null)}
         onSuccess={handleUpdateSkill}
       />

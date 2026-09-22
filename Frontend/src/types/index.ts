@@ -28,6 +28,7 @@ export interface SkillItem {
   name: string;
   score: number;
   min: number;
+  isVerified?: boolean;
 }
 
 export interface DailyLogItem {
