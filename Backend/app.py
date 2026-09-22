@@ -1,5 +1,6 @@
 import os
-from flask import Flask, jsonify
+from pathlib import Path
+from flask import Flask, jsonify, send_from_directory
 from flask_cors import CORS
 from config import Config
 from models import init_db
@@ -40,21 +41,29 @@ def create_app():
     app.register_blueprint(industry_bp)
     app.register_blueprint(institute_bp)
 
-    # Friendly Home Route (No more 404 on the root URL!)
-    @app.route('/', methods=['GET'])
-    def home():
-        return jsonify({
-            'name': 'Skill Alignment Portal API',
-            'status': 'online',
-            'endpoints': {
-                'health': '/api/health',
-                'auth': '/api/auth',
-                'student': '/api/student',
-                'industry': '/api/industry',
-                'academician': '/api/academician',
-                'institute': '/api/institute'
-            }
-        }), 200
+    # Serve React frontend build in production
+    frontend_dist = Path(__file__).resolve().parent.parent / "Frontend" / "dist"
+
+    @app.route('/', defaults={'path': ''})
+    @app.route('/<path:path>')
+    def serve(path):
+        if path != "" and frontend_dist.exists() and (frontend_dist / path).exists():
+            return send_from_directory(str(frontend_dist), path)
+        elif frontend_dist.exists() and (frontend_dist / "index.html").exists():
+            return send_from_directory(str(frontend_dist), "index.html")
+        else:
+            return jsonify({
+                'name': 'Skill Alignment Portal API',
+                'status': 'online',
+                'endpoints': {
+                    'health': '/api/health',
+                    'auth': '/api/auth',
+                    'student': '/api/student',
+                    'industry': '/api/industry',
+                    'academician': '/api/academician',
+                    'institute': '/api/institute'
+                }
+            }), 200
 
     @app.route('/api/health', methods=['GET'])
     def health_check():
