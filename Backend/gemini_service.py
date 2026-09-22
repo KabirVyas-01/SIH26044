@@ -17,14 +17,14 @@ class GeminiService:
             if self.api_key else None
         )
 
-    def _call_gemini(self, prompt):
+    def _call_gemini(self, prompt, max_tokens=2500):
         if not self.api_key or not self.api_url:
             return None
 
         headers = {"Content-Type": "application/json"}
         payload = {
             "contents": [{"parts": [{"text": prompt}]}],
-            "generationConfig": {"temperature": 0.2, "maxOutputTokens": 1000}
+            "generationConfig": {"temperature": 0.2, "maxOutputTokens": max_tokens}
         }
 
         try:
@@ -56,12 +56,19 @@ class GeminiService:
         if normalized_level not in ('beginner', 'intermediate', 'advanced'):
             normalized_level = 'intermediate'
 
-        # 1. Try Gemini AI with explicit level and count
+        # 1. Try Gemini AI with explicit level, count, and strict skill-specific prompt
         prompt = (
-            f"Generate exactly {count} multiple-choice test questions for skill '{normalized_skill}' at '{normalized_level.upper()}' difficulty level. "
-            f"Target practical engineering knowledge and code reasoning suitable for a {normalized_level} university student. "
-            f"Return ONLY a valid JSON list of {count} objects with keys: "
-            f"'question_text', 'options' (object with keys 'A', 'B', 'C', 'D'), and 'correct_answer' ('A', 'B', 'C', or 'D')."
+            f"You are a Senior Technical Examiner and Software Engineering Director.\n"
+            f"Generate exactly {count} multiple-choice technical verification questions SPECIFICALLY testing '{normalized_skill}' at '{normalized_level.upper()}' difficulty level.\n"
+            f"CRITICAL RULES:\n"
+            f"1. Every question MUST be directly relevant to '{normalized_skill}' — testing its specific syntax, standard libraries, APIs, runtime behavior, data types, memory characteristics, or architectural design patterns.\n"
+            f"2. Under NO circumstance should you generate generic software questions like 'What is unit testing?' or 'Why use version control?'.\n"
+            f"3. Calibrate depth to '{normalized_level.upper()}':\n"
+            f"   - Beginner: Syntax, basic operators, fundamental idioms, common built-in methods.\n"
+            f"   - Intermediate: Real-world patterns, error handling, performance nuances, standard packages.\n"
+            f"   - Advanced: Internals, concurrency, low-level mechanics, optimizations, architectural trade-offs.\n"
+            f"4. Provide 4 realistic options (keys 'A', 'B', 'C', 'D') with one unambiguous correct answer ('A', 'B', 'C', or 'D').\n"
+            f"Return ONLY a valid JSON list of {count} objects with keys: 'question_text', 'options' (object with 'A', 'B', 'C', 'D'), and 'correct_answer'."
         )
         raw_ai = self._call_gemini(prompt)
         questions = []
@@ -69,7 +76,7 @@ class GeminiService:
             try:
                 clean = raw_ai.replace("```json", "").replace("```", "").strip()
                 parsed = json.loads(clean)
-                if isinstance(parsed, list) and len(parsed) >= 5:
+                if isinstance(parsed, list) and len(parsed) >= 4:
                     questions = parsed
             except Exception:
                 questions = []
@@ -101,17 +108,17 @@ class GeminiService:
         return saved_questions
 
     def _get_offline_bank(self, skill_name: str, level: str):
-        """Curated 10-question technical banks for Python and general tech by level."""
-        skill_lower = skill_name.lower()
+        """Curated skill-specific technical banks for top languages and frameworks by difficulty."""
+        sk = skill_name.lower()
 
-        # PYTHON BANKS
-        if 'python' in skill_lower:
+        # 1. PYTHON
+        if 'python' in sk:
             if level == 'beginner':
                 return [
                     {"question_text": "Which of the following is an immutable data type in Python?", "options": {"A": "List", "B": "Tuple", "C": "Set", "D": "Dictionary"}, "correct_answer": "B"},
                     {"question_text": "What will type(7 / 2) return in Python 3?", "options": {"A": "int", "B": "float", "C": "double", "D": "number"}, "correct_answer": "B"},
                     {"question_text": "Which keyword is used to define a function in Python?", "options": {"A": "func", "B": "function", "C": "def", "D": "define"}, "correct_answer": "C"},
-                    {"question_text": "Which method removes and returns the last item from a list?", "options": {"A": ".pop()", "B": ".remove()", "C": ".delete()", "D": ".pull()"}, "correct_answer": "A"},
+                    {"question_text": "Which method removes and returns the last item from a list in Python?", "options": {"A": ".pop()", "B": ".remove()", "C": ".delete()", "D": ".pull()"}, "correct_answer": "A"},
                     {"question_text": "What will len('Hello World') evaluate to?", "options": {"A": "10", "B": "11", "C": "12", "D": "9"}, "correct_answer": "B"},
                     {"question_text": "Which operator is used for exponentiation (power) in Python?", "options": {"A": "^", "B": "**", "C": "exp()", "D": "^^"}, "correct_answer": "B"},
                     {"question_text": "How do you create an empty dictionary in Python?", "options": {"A": "[]", "B": "()", "C": "{}", "D": "set()"}, "correct_answer": "C"},
@@ -132,7 +139,7 @@ class GeminiService:
                     {"question_text": "In Python 3.7+, what happens if a generator function raises StopIteration internally?", "options": {"A": "It is silently ignored", "B": "It is transformed into a RuntimeError to prevent masking loop termination", "C": "The generator restarts from line 1", "D": "It yields None forever"}, "correct_answer": "B"},
                     {"question_text": "Which standard library module provides deterministic profiling of function execution time and call counts?", "options": {"A": "tracemalloc", "B": "cProfile", "C": "dis", "D": "timeit"}, "correct_answer": "B"}
                 ]
-            else: # Intermediate (default)
+            else: # Intermediate
                 return [
                     {"question_text": "What is the output of [x**2 for x in range(5) if x % 2 == 0]?", "options": {"A": "[0, 4, 16]", "B": "[1, 9]", "C": "[0, 1, 4, 9, 16]", "D": "[4, 16]"}, "correct_answer": "A"},
                     {"question_text": "In a function definition, what does *args allow you to accept?", "options": {"A": "Arbitrary keyword arguments", "B": "An arbitrary number of positional arguments", "C": "Pointer addresses", "D": "Type annotations"}, "correct_answer": "B"},
@@ -146,19 +153,181 @@ class GeminiService:
                     {"question_text": "What is the return type of zip([1, 2], ['a', 'b']) in Python 3?", "options": {"A": "A list of lists", "B": "An iterator yielding tuples", "C": "A dictionary", "D": "A set of pairs"}, "correct_answer": "B"}
                 ]
 
-        # GENERAL SKILL / OTHER TECH BANK (10 questions by level)
-        return [
-            {"question_text": f"Which foundational principle is core to {skill_name} at the {level} level?", "options": {"A": "Writing clean, modular, and maintainable logic", "B": "Bypassing version control", "C": "Hardcoding configuration values", "D": "Ignoring edge cases"}, "correct_answer": "A"},
-            {"question_text": f"What is the standard approach to handling unexpected errors in {skill_name}?", "options": {"A": "Letting the process crash", "B": "Catching specific exceptions, logging details, and graceful degradation", "C": "Suppressing all error messages", "D": "Restarting the computer"}, "correct_answer": "B"},
-            {"question_text": f"Why is unit testing important when writing code in {skill_name}?", "options": {"A": "To increase file size", "B": "To verify individual components work in isolation and prevent regressions", "C": "To slow down deployment", "D": "To replace documentation"}, "correct_answer": "B"},
-            {"question_text": f"Which data structure offers average O(1) time complexity for key lookups in {skill_name}?", "options": {"A": "Linked List", "B": "Binary Search Tree", "C": "Hash Map / Hash Table", "D": "Array"}, "correct_answer": "C"},
-            {"question_text": f"What is the role of Git and version control when collaborating on {skill_name} projects?", "options": {"A": "Running automated tests only", "B": "Tracking incremental changes, managing branches, and resolving merge conflicts", "C": "Hosting production databases", "D": "Encrypting code"}, "correct_answer": "B"},
-            {"question_text": f"When scaling an application built with {skill_name}, what is the best practice for storing secrets?", "options": {"A": "Committing them to public GitHub", "B": "Using environment variables (.env) kept outside source control", "C": "Writing them in plain text README", "D": "Embedding in client bundle"}, "correct_answer": "B"},
-            {"question_text": f"What is an idempotent operation in API design related to {skill_name}?", "options": {"A": "An operation that can be applied multiple times without changing the result beyond the initial application", "B": "An operation that never succeeds", "C": "An asynchronous thread", "D": "A database migration"}, "correct_answer": "A"},
-            {"question_text": f"Which protocol ensures secure, encrypted data transmission over the web for {skill_name} services?", "options": {"A": "HTTP", "B": "FTP", "C": "HTTPS (TLS/SSL)", "D": "Telnet"}, "correct_answer": "C"},
-            {"question_text": f"What is the primary benefit of caching frequently queried data in {skill_name}?", "options": {"A": "Increases memory leaks", "B": "Reduces database load and drastically lowers latency", "C": "Guarantees zero downtime", "D": "Replaces the main database"}, "correct_answer": "B"},
-            {"question_text": f"What does CI/CD stand for in modern {skill_name} software delivery pipelines?", "options": {"A": "Code Inspection / Code Design", "B": "Continuous Integration / Continuous Delivery", "C": "Central Index / Central Database", "D": "Client Interface / Client Device"}, "correct_answer": "B"}
-        ]
+        # 2. REACT & FRONTEND
+        elif any(k in sk for k in ('react', 'frontend', 'redux', 'next')):
+            if level == 'beginner':
+                return [
+                    {"question_text": "What is JSX in React development?", "options": {"A": "A new browser engine", "B": "A syntax extension allowing HTML-like markup inside JavaScript", "C": "A database query language", "D": "A CSS preprocessor"}, "correct_answer": "B"},
+                    {"question_text": "Which React hook is used to declare state variables in a functional component?", "options": {"A": "useEffect", "B": "useMemo", "C": "useState", "D": "useReducer"}, "correct_answer": "C"},
+                    {"question_text": "Why must every element in a dynamically rendered list have a unique 'key' prop?", "options": {"A": "To add CSS styling", "B": "To help React identify which items have changed, added, or removed during diffing", "C": "To prevent browser caching", "D": "To sort elements automatically"}, "correct_answer": "B"},
+                    {"question_text": "How is data typically passed from a parent component down to a child component in React?", "options": {"A": "Through props", "B": "Through local storage", "C": "Through global window variables", "D": "Through SQL queries"}, "correct_answer": "A"},
+                    {"question_text": "Which hook is designed to handle side effects like data fetching or subscriptions?", "options": {"A": "useState", "B": "useEffect", "C": "useRef", "D": "useContext"}, "correct_answer": "B"},
+                    {"question_text": "What happens when a React component's state is updated via its setter function?", "options": {"A": "The browser completely reloads", "B": "The component and its children re-render with updated state", "C": "The component is permanently unmounted", "D": "The database updates automatically"}, "correct_answer": "B"},
+                    {"question_text": "What is a React Fragment (<>...</>) used for?", "options": {"A": "Grouping multiple elements without adding an extra DOM node", "B": "Speeding up API requests", "C": "Compiling TypeScript", "D": "Creating animation frames"}, "correct_answer": "A"},
+                    {"question_text": "How do you bind a button click event in React JSX?", "options": {"A": "onclick='handleClick()'", "B": "onClick={handleClick}", "C": "click={handleClick}", "D": "on:click={handleClick}"}, "correct_answer": "B"},
+                    {"question_text": "Can a child component directly mutate its received props in React?", "options": {"A": "Yes, anytime", "B": "No, props are strictly read-only and immutable", "C": "Only if they are numbers", "D": "Only inside useEffect"}, "correct_answer": "B"},
+                    {"question_text": "What is the recommended syntax for conditional rendering in JSX?", "options": {"A": "if-else tags", "B": "Ternary operator (condition ? <A/> : <B/>) or logical AND (&&)", "C": "switch-case tags", "D": "while loops"}, "correct_answer": "B"}
+                ]
+            else: # Intermediate / Advanced
+                return [
+                    {"question_text": "What is React's Virtual DOM Reconciliation algorithm based on?", "options": {"A": "O(n^3) matrix multiplication", "B": "A heuristic diffing algorithm that compares Fiber trees in O(n) linear time", "C": "Direct innerHTML string replacement", "D": "Browser shadow DOM duplication"}, "correct_answer": "B"},
+                    {"question_text": "How does useCallback differ from useMemo in React?", "options": {"A": "useCallback memoizes a function reference; useMemo memoizes a computed value", "B": "useCallback runs on server; useMemo runs on client", "C": "useMemo is only for strings", "D": "There is no difference"}, "correct_answer": "A"},
+                    {"question_text": "What does returning a function from inside useEffect accomplish?", "options": {"A": "Triggers an immediate error", "B": "Defines a cleanup function that runs before unmount or prior to the next effect execution", "C": "Forces a synchronous re-render", "D": "Saves state to local storage"}, "correct_answer": "B"},
+                    {"question_text": "What is a 'stale closure' bug in React functional components?", "options": {"A": "CSS style inheritance bug", "B": "When an effect or callback captures outdated state/props due to omitted dependencies", "C": "When a network socket disconnects", "D": "A syntax error in JSX tags"}, "correct_answer": "B"},
+                    {"question_text": "What does the useRef hook provide that useState does not?", "options": {"A": "A mutable .current object whose changes persist without triggering component re-renders", "B": "Automatic API re-fetching", "C": "Two-way data binding", "D": "Global browser cookies"}, "correct_answer": "A"},
+                    {"question_text": "What problem does the React Context API solve?", "options": {"A": "Database normalization", "B": "Eliminates prop drilling by making state accessible across deep component trees", "C": "Server-side load balancing", "D": "Automated E2E testing"}, "correct_answer": "B"},
+                    {"question_text": "What is the difference between controlled and uncontrolled input elements?", "options": {"A": "Controlled inputs have their value driven by React state; uncontrolled rely on DOM refs", "B": "Controlled inputs cannot be typed into", "C": "Uncontrolled inputs are deprecated in HTML5", "D": "Controlled inputs do not support validation"}, "correct_answer": "A"},
+                    {"question_text": "When should useLayoutEffect be preferred over useEffect?", "options": {"A": "For long-running background API calls", "B": "When measuring DOM layout synchronously before browser paint to prevent layout flickering", "C": "When logging telemetry to the server", "D": "Only when rendering SVG graphics"}, "correct_answer": "B"},
+                    {"question_text": "What does React 18's startTransition API allow developers to do?", "options": {"A": "Mark state updates as non-urgent transitions so urgent interactions remain responsive", "B": "Animate CSS opacity automatically", "C": "Restart the React server", "D": "Upgrade npm packages at runtime"}, "correct_answer": "A"},
+                    {"question_text": "What does the React.memo higher-order component do?", "options": {"A": "Caches HTTP responses", "B": "Prevents component re-rendering if its props have not shallowly changed", "C": "Validates prop types with schema", "D": "Compiles JSX to WebAssembly"}, "correct_answer": "B"}
+                ]
+
+        # 3. SQL & DATABASES
+        elif any(k in sk for k in ('sql', 'database', 'postgres', 'mysql', 'sqlite', 'db')):
+            if level == 'beginner':
+                return [
+                    {"question_text": "Which SQL clause is used to filter records before any grouping or aggregation takes place?", "options": {"A": "HAVING", "B": "WHERE", "C": "ORDER BY", "D": "LIMIT"}, "correct_answer": "B"},
+                    {"question_text": "What does SELECT DISTINCT column_name FROM table accomplish?", "options": {"A": "Returns only unique, non-duplicate values for the specified column", "B": "Sorts the column in reverse", "C": "Deletes duplicate rows permanently", "D": "Counts the total rows"}, "correct_answer": "A"},
+                    {"question_text": "Which SQL clause sorts the returned records in ascending or descending order?", "options": {"A": "GROUP BY", "B": "ORDER BY", "C": "SORT BY", "D": "FILTER BY"}, "correct_answer": "B"},
+                    {"question_text": "What is a PRIMARY KEY in a relational database table?", "options": {"A": "A key that can contain NULL values", "B": "A unique identifier for each row that cannot contain NULL values", "C": "An optional description field", "D": "A foreign reference to another database"}, "correct_answer": "B"},
+                    {"question_text": "What type of SQL JOIN returns only rows that have matching values in both tables?", "options": {"A": "LEFT JOIN", "B": "FULL OUTER JOIN", "C": "INNER JOIN", "D": "CROSS JOIN"}, "correct_answer": "C"},
+                    {"question_text": "Which aggregate function calculates the total number of rows matching a condition?", "options": {"A": "SUM()", "B": "COUNT()", "C": "TOTAL()", "D": "LEN()"}, "correct_answer": "B"},
+                    {"question_text": "Which statement is used to insert new records into a database table?", "options": {"A": "ADD RECORD", "B": "INSERT INTO", "C": "UPDATE TABLE", "D": "APPEND ROW"}, "correct_answer": "B"},
+                    {"question_text": "In a SQL LIKE pattern, which wildcard matches zero or more characters?", "options": {"A": "?", "B": "*", "C": "%", "D": "#"}, "correct_answer": "C"},
+                    {"question_text": "What is the purpose of the GROUP BY clause?", "options": {"A": "Collapses rows that share the same values into summary aggregation rows", "B": "Deletes duplicate records", "C": "Creates a foreign key constraint", "D": "Limits query output to 10 rows"}, "correct_answer": "A"},
+                    {"question_text": "What happens if DELETE FROM users; is executed without a WHERE clause?", "options": {"A": "Nothing happens without WHERE", "B": "All rows in the users table will be deleted", "C": "Only the first row is deleted", "D": "A syntax error is thrown"}, "correct_answer": "B"}
+                ]
+            else: # Intermediate / Advanced
+                return [
+                    {"question_text": "How does the HAVING clause differ from the WHERE clause in SQL?", "options": {"A": "HAVING filters aggregated groups after GROUP BY; WHERE filters individual rows before grouping", "B": "HAVING is for primary keys only", "C": "WHERE can only be used with subqueries", "D": "There is no difference"}, "correct_answer": "A"},
+                    {"question_text": "What is the key performance difference between an Index Seek and an Index Scan?", "options": {"A": "Index Seek navigates the B-Tree directly to target rows; Index Scan reads all leaf pages", "B": "Index Scan is always faster than Seek", "C": "Index Seek locks the entire database", "D": "Index Scan requires no disk reads"}, "correct_answer": "A"},
+                    {"question_text": "What does the ACID acronym guarantee in relational database transactions?", "options": {"A": "Atomicity, Consistency, Isolation, Durability", "B": "Access, Concurrency, Indexing, Delivery", "C": "Authentication, Cryptography, Integrity, Deployment", "D": "Array, Collection, Iteration, Dequeue"}, "correct_answer": "A"},
+                    {"question_text": "What does ROW_NUMBER() OVER (PARTITION BY dept ORDER BY salary DESC) produce?", "options": {"A": "A sequential rank number within each department partition ordered by salary", "B": "The average salary per department", "C": "The sum of all rows", "D": "A random primary key"}, "correct_answer": "A"},
+                    {"question_text": "What does a Foreign Key constraint enforce?", "options": {"A": "Referential integrity by ensuring values match a primary key in another table", "B": "Data encryption at rest", "C": "Automatic indexing on all columns", "D": "Read-only access permissions"}, "correct_answer": "A"},
+                    {"question_text": "In transaction isolation levels, what is a 'Dirty Read'?", "options": {"A": "Reading uncommitted changes from another concurrent transaction that might be rolled back", "B": "Reading corrupted disk sectors", "C": "A syntax error in SELECT statement", "D": "A read that takes more than 1 second"}, "correct_answer": "A"},
+                    {"question_text": "What is the difference between a LEFT JOIN and a FULL OUTER JOIN?", "options": {"A": "LEFT JOIN returns all left rows plus matching right; FULL OUTER returns all rows from both tables", "B": "FULL OUTER JOIN is only for numbers", "C": "LEFT JOIN drops unmatched left rows", "D": "They produce identical execution plans"}, "correct_answer": "A"},
+                    {"question_text": "What is Database Normalization (such as 3NF) primarily designed to achieve?", "options": {"A": "Eliminate redundant data and prevent insertion, update, and deletion anomalies", "B": "Speed up full table scans", "C": "Merge all tables into a single wide table", "D": "Compress data files on disk"}, "correct_answer": "A"},
+                    {"question_text": "Why can adding too many B-Tree indexes negatively impact write-heavy workloads?", "options": {"A": "Every INSERT, UPDATE, and DELETE must synchronously update all corresponding index trees", "B": "Indexes delete historical records", "C": "Indexes prevent database backups", "D": "Indexes disable foreign keys"}, "correct_answer": "A"},
+                    {"question_text": "What is the purpose of running an EXPLAIN or EXPLAIN ANALYZE command?", "options": {"A": "Displays the execution plan, estimated cost, and index usage chosen by the query planner", "B": "Defragments the database tables", "C": "Exports tables to CSV format", "D": "Encrypts database passwords"}, "correct_answer": "A"}
+                ]
+
+        # 4. JAVASCRIPT & TYPESCRIPT
+        elif any(k in sk for k in ('javascript', 'typescript', 'js', 'ts', 'node')):
+            if level == 'beginner':
+                return [
+                    {"question_text": "What is the difference between let and const in modern JavaScript?", "options": {"A": "const cannot be reassigned; let can be reassigned; both are block-scoped", "B": "let is global; const is local", "C": "const is only for numbers", "D": "There is no difference"}, "correct_answer": "A"},
+                    {"question_text": "What is the output of typeof null in JavaScript?", "options": {"A": "'null'", "B": "'undefined'", "C": "'object'", "D": "'boolean'"}, "correct_answer": "C"},
+                    {"question_text": "What does the strict equality operator (===) check?", "options": {"A": "Checks both value and data type without implicit type conversion", "B": "Checks value only, converting types", "C": "Assigns a variable", "D": "Compares object references only"}, "correct_answer": "A"},
+                    {"question_text": "What does Array.prototype.map() return in JavaScript?", "options": {"A": "A new array containing the results of applying the callback function to each item", "B": "The original mutated array", "C": "The length of the array", "D": "A single reduced value"}, "correct_answer": "A"},
+                    {"question_text": "How do arrow functions (() => {}) handle the 'this' keyword?", "options": {"A": "They inherit 'this' lexically from the enclosing scope", "B": "They bind 'this' to the global window always", "C": "They rebind 'this' on every call", "D": "They cannot access variables outside"}, "correct_answer": "A"},
+                    {"question_text": "What will Boolean('') and Boolean(0) evaluate to in JavaScript?", "options": {"A": "true", "B": "false", "C": "undefined", "D": "TypeError"}, "correct_answer": "B"},
+                    {"question_text": "What is a Promise in JavaScript?", "options": {"A": "An object representing the eventual completion or failure of an asynchronous operation", "B": "A synchronous loop construct", "C": "A database transaction", "D": "A CSS animation wrapper"}, "correct_answer": "A"},
+                    {"question_text": "Which built-in method parses a valid JSON string into a native JavaScript object?", "options": {"A": "JSON.stringify()", "B": "JSON.parse()", "C": "JSON.toObject()", "D": "JSON.decode()"}, "correct_answer": "B"},
+                    {"question_text": "In TypeScript, what is the syntax to declare an array of numbers?", "options": {"A": "number[] or Array<number>", "B": "list<number>", "C": "[number]", "D": "numbers.array"}, "correct_answer": "A"},
+                    {"question_text": "What does template literal syntax (`${val}`) allow in JavaScript?", "options": {"A": "String interpolation and multi-line strings enclosed in backticks", "B": "Regular expression pattern matching only", "C": "Binary bit shifting", "D": "HTML DOM sanitization"}, "correct_answer": "A"}
+                ]
+            else: # Intermediate / Advanced
+                return [
+                    {"question_text": "How does the JavaScript Event Loop prioritize the Microtask Queue versus the Macrotask Queue?", "options": {"A": "Microtasks (Promise callbacks) execute immediately after the current script, before the next macrotask (setTimeout)", "B": "Macrotasks always run first", "C": "They run concurrently on two threads", "D": "Microtasks run only when the browser tab is hidden"}, "correct_answer": "A"},
+                    {"question_text": "What is a Closure in JavaScript?", "options": {"A": "A function bundled together with references to its surrounding lexical environment", "B": "A method to close browser tabs", "C": "A syntax error that prevents script execution", "D": "A CSS pseudo-selector"}, "correct_answer": "A"},
+                    {"question_text": "In TypeScript, how does an 'interface' differ from a 'type' alias?", "options": {"A": "Interfaces support declaration merging; types can model unions and primitive aliases", "B": "Types are compiled to runtime objects; interfaces are deleted", "C": "Interfaces cannot have properties", "D": "Types cannot be used with functions"}, "correct_answer": "A"},
+                    {"question_text": "What happens when one promise passed into Promise.all() rejects?", "options": {"A": "Promise.all immediately rejects with that error, ignoring pending promises", "B": "Promise.all returns null", "C": "It waits for all others then returns partial data", "D": "It retries the failed promise 3 times"}, "correct_answer": "A"},
+                    {"question_text": "What is prototypical inheritance in JavaScript?", "options": {"A": "Objects inherit properties and methods directly from other objects via their prototype chain", "B": "Classical class inheritance compiled to C++ structs", "C": "Copying all methods into every instance memory address", "D": "Thread-safe immutable state cloning"}, "correct_answer": "A"},
+                    {"question_text": "What does the TypeScript 'keyof' type operator do?", "options": {"A": "Produces a union type of string or numeric literal keys of an object type", "B": "Returns the number of keys at runtime", "C": "Deletes a property from an object", "D": "Generates a random UUID key"}, "correct_answer": "A"},
+                    {"question_text": "What is variable and function hoisting in JavaScript?", "options": {"A": "Declarations are moved to the top of their scope during compilation before code execution", "B": "Uploading code to a remote server", "C": "Converting synchronous code to async", "D": "Garbage collecting unused memory"}, "correct_answer": "A"},
+                    {"question_text": "What is the difference between debouncing and throttling?", "options": {"A": "Debounce delays execution until X ms of quiet time; throttle enforces execution at most once per X ms interval", "B": "Throttle cancels all calls; debounce runs them all", "C": "Debounce is only for scroll events", "D": "They are identical techniques"}, "correct_answer": "A"},
+                    {"question_text": "In TypeScript, what is the key difference between 'unknown' and 'any'?", "options": {"A": "'unknown' is type-safe and requires type narrowing before operations; 'any' disables all checks", "B": "'unknown' cannot be assigned any value", "C": "'any' is only available in strict mode", "D": "'unknown' is converted to string at runtime"}, "correct_answer": "A"},
+                    {"question_text": "What is the output of [1, 2, 3] + [4, 5, 6] in JavaScript?", "options": {"A": "'1,2,34,5,6' due to implicit array-to-string coercion", "B": "[1, 2, 3, 4, 5, 6]", "C": "TypeError", "D": "NaN"}, "correct_answer": "A"}
+                ]
+
+        # 5. DEVOPS, DOCKER & CLOUD
+        elif any(k in sk for k in ('devops', 'docker', 'kubernetes', 'k8s', 'linux', 'cloud', 'aws', 'ci/cd')):
+            if level == 'beginner':
+                return [
+                    {"question_text": "What is a Docker container?", "options": {"A": "A standalone, lightweight package containing application code and runtime dependencies", "B": "A virtual machine hypervisor", "C": "A database table partition", "D": "A git branch"}, "correct_answer": "A"},
+                    {"question_text": "Which Dockerfile instruction specifies the base parent image?", "options": {"A": "BASE", "B": "FROM", "C": "IMAGE", "D": "START"}, "correct_answer": "B"},
+                    {"question_text": "Which command builds a Docker image named 'my-app' from the current directory?", "options": {"A": "docker create my-app", "B": "docker build -t my-app .", "C": "docker compile my-app", "D": "docker image new"}, "correct_answer": "B"},
+                    {"question_text": "What is the difference between a Docker Image and a Docker Container?", "options": {"A": "An image is a static read-only blueprint; a container is a runnable isolated instance", "B": "A container cannot be stopped", "C": "An image runs directly on bare metal", "D": "There is no difference"}, "correct_answer": "A"},
+                    {"question_text": "Which command lists all currently running Docker containers?", "options": {"A": "docker ps", "B": "docker list", "C": "docker running", "D": "docker show"}, "correct_answer": "A"},
+                    {"question_text": "What is the purpose of Docker Volumes?", "options": {"A": "Persisting container data independently of the container lifecycle", "B": "Increasing CPU speed", "C": "Compressing container logs", "D": "Encrypting network packets"}, "correct_answer": "A"},
+                    {"question_text": "In 'docker run -p 8080:80 nginx', what does '-p 8080:80' mean?", "options": {"A": "Forwards host port 8080 to container port 80", "B": "Allocates 8080 MB of RAM", "C": "Runs 8080 threads", "D": "Sets priority level 80"}, "correct_answer": "A"},
+                    {"question_text": "What does the Linux command 'chmod +x script.sh' do?", "options": {"A": "Grants executable permissions to script.sh", "B": "Deletes script.sh", "C": "Compresses script.sh", "D": "Renames script.sh"}, "correct_answer": "A"},
+                    {"question_text": "Which protocol provides secure encrypted terminal communication with remote Linux servers?", "options": {"A": "Telnet", "B": "FTP", "C": "SSH", "D": "HTTP"}, "correct_answer": "C"},
+                    {"question_text": "What is Continuous Integration (CI) in software delivery?", "options": {"A": "Automatically building and testing code changes on every commit", "B": "Manually deploying servers on weekends", "C": "Writing documentation for users", "D": "Billing clients monthly"}, "correct_answer": "A"}
+                ]
+            else: # Intermediate / Advanced
+                return [
+                    {"question_text": "What is the primary benefit of Multi-Stage Docker builds?", "options": {"A": "Dramatically reduces final image size by discarding build tools and intermediate artifacts", "B": "Allows multiple containers to run in one pod", "C": "Encrypts source code with AES-256", "D": "Eliminates need for Docker daemon"}, "correct_answer": "A"},
+                    {"question_text": "In Kubernetes, what is a Pod?", "options": {"A": "The smallest deployable unit representing one or more closely coupled containers", "B": "A physical server in a data center", "C": "A virtual private cloud network", "D": "A database storage volume"}, "correct_answer": "A"},
+                    {"question_text": "How does a Kubernetes Service differ from an Ingress resource?", "options": {"A": "A Service manages internal L4 load balancing; an Ingress manages external L7 HTTP/HTTPS routing", "B": "Services are only for databases", "C": "An Ingress can only route TCP traffic", "D": "They are deprecated synonyms"}, "correct_answer": "A"},
+                    {"question_text": "What does Infrastructure as Code (IaC) with tools like Terraform accomplish?", "options": {"A": "Declaratively provisions and versions cloud resources through reproducible configuration code", "B": "Compiles JavaScript to C++", "C": "Monitors CPU fan speeds", "D": "Generates mock database records"}, "correct_answer": "A"},
+                    {"question_text": "What does the Docker container restart policy 'unless-stopped' ensure?", "options": {"A": "Restarts container automatically on failure or reboot unless explicitly stopped by user", "B": "Restarts container every 5 minutes", "C": "Prevents the container from ever terminating", "D": "Stops container when memory exceeds 50%"}, "correct_answer": "A"},
+                    {"question_text": "What is a Reverse Proxy (like Nginx) commonly deployed for?", "options": {"A": "Load balancing, SSL/TLS termination, and caching upstream backend traffic", "B": "Compiling kernel drivers", "C": "Writing SQL migration scripts", "D": "Managing git repositories"}, "correct_answer": "A"},
+                    {"question_text": "How does a Blue-Green deployment strategy achieve zero downtime?", "options": {"A": "Maintains two identical production environments, switching router traffic instantly", "B": "Deploys to 10% of users first", "C": "Shuts down the database during upgrades", "D": "Requires users to re-login"}, "correct_answer": "A"},
+                    {"question_text": "What is Prometheus primarily designed for in cloud-native observability?", "options": {"A": "Scraping, storing, and alerting on numerical time-series metrics over HTTP", "B": "Storing video files", "C": "Managing user passwords", "D": "Replacing relational databases"}, "correct_answer": "A"},
+                    {"question_text": "In Linux permissions, what access does 'chmod 755 filename' grant?", "options": {"A": "Read, write, execute for owner; read and execute for group and others", "B": "Full permissions for everyone", "C": "Read-only for all users", "D": "Execute only for owner"}, "correct_answer": "A"},
+                    {"question_text": "What metric does the Kubernetes Horizontal Pod Autoscaler (HPA) typically scale on by default?", "options": {"A": "Observed CPU and memory utilization thresholds", "B": "Number of git commits", "C": "Total disk size of the node", "D": "Clock time of the day"}, "correct_answer": "A"}
+                ]
+
+        # 6. JAVA & OOP
+        elif any(k in sk for k in ('java', 'spring', 'oop')):
+            return [
+                {"question_text": "In Java, what is the difference between '==' and the '.equals()' method?", "options": {"A": "'==' compares object memory references; '.equals()' compares logical object equality", "B": "They are identical in all cases", "C": "'.equals()' is only for numbers", "D": "'==' is deprecated in Java 17"}, "correct_answer": "A"},
+                {"question_text": "What is the primary role of the Java Virtual Machine (JVM)?", "options": {"A": "Executes compiled Java bytecode on the host operating system", "B": "Formats source code files", "C": "Manages Git repositories", "D": "Acts as an HTTP web server"}, "correct_answer": "A"},
+                {"question_text": "Why is Java considered platform independent?", "options": {"A": "Java source compiles into bytecode that executes on any operating system with a JVM", "B": "It has no dependencies", "C": "It runs inside HTML directly", "D": "It compiles directly to x86 machine code"}, "correct_answer": "A"},
+                {"question_text": "What is the difference between an Abstract Class and an Interface in Java?", "options": {"A": "An abstract class can declare instance state and constructors; interfaces define contracts and default methods", "B": "Interfaces can have private instance variables", "C": "A class can extend multiple abstract classes", "D": "Abstract classes cannot have methods"}, "correct_answer": "A"},
+                {"question_text": "How does Java's automatic Garbage Collection operate?", "options": {"A": "Automatically identifies and reclaims heap memory occupied by unreferenced objects", "B": "Clears all static variables on every method call", "C": "Deallocates local primitive variables on the stack", "D": "Compresses the compiled JAR file"}, "correct_answer": "A"},
+                {"question_text": "How does an ArrayList differ from a LinkedList in Java?", "options": {"A": "ArrayList is backed by dynamic array with O(1) random access; LinkedList has O(1) node insertion/deletion", "B": "LinkedList is always faster for lookups", "C": "ArrayList cannot store objects", "D": "LinkedList cannot be iterated with loops"}, "correct_answer": "A"},
+                {"question_text": "What does the 'final' keyword signify when applied to a Java class?", "options": {"A": "The class cannot be extended or subclassed", "B": "The class cannot be instantiated", "C": "The class runs in a background thread", "D": "All methods become private"}, "correct_answer": "A"},
+                {"question_text": "What is the difference between a Checked and an Unchecked exception in Java?", "options": {"A": "Checked exceptions must be handled or declared with throws; unchecked inherit from RuntimeException", "B": "Unchecked exceptions crash the compiler", "C": "Checked exceptions are only in Spring Boot", "D": "There is no functional difference"}, "correct_answer": "A"},
+                {"question_text": "In Java 8+ Streams, what is the difference between map() and filter()?", "options": {"A": "map transforms elements into new values; filter selects elements that match a predicate", "B": "map removes nulls only", "C": "filter sorts the collection", "D": "filter converts stream to array"}, "correct_answer": "A"},
+                {"question_text": "What does the 'volatile' keyword guarantee in multi-threaded Java?", "options": {"A": "Guarantees that reads and writes are visible immediately across all threads without CPU cache staleness", "B": "Locks the entire class method", "C": "Makes the variable immutable", "D": "Forces execution on the GPU"}, "correct_answer": "A"}
+            ]
+
+        # 7. DATA STRUCTURES & ALGORITHMS
+        elif any(k in sk for k in ('data structure', 'algorithm', 'dsa', 'tree', 'graph', 'sorting')):
+            return [
+                {"question_text": "What is the time complexity of searching in a sorted array using Binary Search?", "options": {"A": "O(n)", "B": "O(log n)", "C": "O(1)", "D": "O(n log n)"}, "correct_answer": "B"},
+                {"question_text": "Which data structure operates strictly on a Last-In, First-Out (LIFO) basis?", "options": {"A": "Queue", "B": "Stack", "C": "Linked List", "D": "Hash Map"}, "correct_answer": "B"},
+                {"question_text": "What is the worst-case time complexity of QuickSort?", "options": {"A": "O(n log n)", "B": "O(n^2)", "C": "O(n)", "D": "O(log n)"}, "correct_answer": "B"},
+                {"question_text": "How does a Hash Table resolve hash collisions when two keys hash to the same bucket?", "options": {"A": "Through chaining (linked lists) or open addressing (probing)", "B": "By discarding the older entry", "C": "By restarting the server", "D": "By sorting all entries alphabetically"}, "correct_answer": "A"},
+                {"question_text": "What is the fundamental difference between BFS and DFS graph traversals?", "options": {"A": "BFS explores level by level using a Queue; DFS explores depth first using a Stack or recursion", "B": "DFS is only for binary trees", "C": "BFS cannot find shortest path in unweighted graphs", "D": "They produce identical traversal orders"}, "correct_answer": "A"},
+                {"question_text": "What is the time complexity of inserting into a balanced Binary Search Tree (AVL / Red-Black)?", "options": {"A": "O(1)", "B": "O(log n)", "C": "O(n)", "D": "O(n^2)"}, "correct_answer": "B"},
+                {"question_text": "What data structure is typically used to implement a Priority Queue efficiently?", "options": {"A": "Binary Heap", "B": "Circular Linked List", "C": "Hash Set", "D": "Adjacency Matrix"}, "correct_answer": "A"},
+                {"question_text": "In Dynamic Programming, what does 'Memoization' refer to?", "options": {"A": "Top-down caching of subproblem results to avoid redundant calculations", "B": "Bottom-up iterative tabulation only", "C": "Compressing binary trees", "D": "Garbage collection in recursion"}, "correct_answer": "A"},
+                {"question_text": "Which sorting algorithm is stable and guarantees O(n log n) time in all cases?", "options": {"A": "QuickSort", "B": "Merge Sort", "C": "Selection Sort", "D": "Bubble Sort"}, "correct_answer": "B"},
+                {"question_text": "What is the maximum number of nodes in a binary tree of height h (where root is height 1)?", "options": {"A": "2^h - 1", "B": "2^(h-1)", "C": "h^2", "D": "2*h"}, "correct_answer": "A"}
+            ]
+
+        # 8. MACHINE LEARNING & AI
+        elif any(k in sk for k in ('machine learning', 'ai', 'data science', 'deep learning', 'nlp')):
+            return [
+                {"question_text": "What is Overfitting in machine learning?", "options": {"A": "When a model learns training noise too closely and fails to generalize to unseen test data", "B": "When training loss is zero and validation loss is zero", "C": "When a dataset has missing columns", "D": "When model inference is too fast"}, "correct_answer": "A"},
+                {"question_text": "What is the primary role of a Loss Function during model training?", "options": {"A": "Quantifies the error between model predictions and actual ground truth labels", "B": "Calculates server hosting costs", "C": "Normalizes database tables", "D": "Compresses model weights"}, "correct_answer": "A"},
+                {"question_text": "How does Gradient Descent optimize neural network parameters?", "options": {"A": "Computes gradients of the loss with respect to weights and updates weights in the opposite direction", "B": "Randomly guesses weights until loss is 0", "C": "Doubles the learning rate on every epoch", "D": "Removes neurons with negative weights"}, "correct_answer": "A"},
+                {"question_text": "What is the difference between Precision and Recall in classification evaluation?", "options": {"A": "Precision = TP / (TP + FP); Recall = TP / (TP + FN)", "B": "Precision is only for regression problems", "C": "Recall measures execution time", "D": "They are mathematically identical"}, "correct_answer": "A"},
+                {"question_text": "Why do practitioners split data into Training, Validation, and Test sets?", "options": {"A": "Train learns weights; Validation tunes hyperparameters/prevents overfit; Test measures unbiased final performance", "B": "To duplicate records for higher accuracy", "C": "To bypass GPU memory limits", "D": "To avoid converting data to tensors"}, "correct_answer": "A"},
+                {"question_text": "What is Regularization (such as L1 Lasso or L2 Ridge) used for?", "options": {"A": "Penalizes excessive weight magnitudes to prevent overfitting and encourage simpler models", "B": "Speeds up data loading", "C": "Replaces backpropagation", "D": "Removes categorical features"}, "correct_answer": "A"},
+                {"question_text": "What is Transfer Learning?", "options": {"A": "Taking a model pretrained on a massive dataset and fine-tuning it for a specific downstream task", "B": "Copying data from PostgreSQL to MongoDB", "C": "Training without ground truth labels", "D": "Migrating servers across cloud providers"}, "correct_answer": "A"},
+                {"question_text": "What is Data Augmentation in computer vision?", "options": {"A": "Artificially expanding dataset diversity through random crops, rotations, flips, and color jitter", "B": "Generating fake database users", "C": "Compressing JPEG images to PNG", "D": "Increasing image resolution with bicubic filter"}, "correct_answer": "A"},
+                {"question_text": "What is the Vanishing Gradient problem in deep neural networks?", "options": {"A": "Gradients shrink exponentially as they backpropagate through deep layers, stalling learning in early layers", "B": "Loss becomes infinite", "C": "GPU memory runs out", "D": "Weights become NaN"}, "correct_answer": "A"},
+                {"question_text": "Why are non-linear activation functions (like ReLU or GELU) essential in neural networks?", "options": {"A": "Allow the network to approximate complex non-linear mathematical mappings rather than collapsing to a linear model", "B": "Prevent memory leaks in PyTorch", "C": "Force outputs between 0 and 1 only", "D": "Accelerate CPU thread allocation"}, "correct_answer": "A"}
+            ]
+
+        # 9. DOMAIN-ACCURATE DYNAMIC FALLBACK FOR ANY OTHER SKILL
+        else:
+            return [
+                {"question_text": f"In {skill_name}, what is the standard idiomatic practice for handling asynchronous operations and concurrency?", "options": {"A": "Using native non-blocking async constructs, promises, or coroutines", "B": "Writing synchronous infinite while loops", "C": "Bypassing the runtime scheduler", "D": "Terminating the process on any I/O delay"}, "correct_answer": "A"},
+                {"question_text": f"How are external dependencies, third-party libraries, and module versions managed in {skill_name} projects?", "options": {"A": "Through the ecosystem package manifest and lockfile (e.g. package.json, requirements.txt, go.mod, Cargo.toml)", "B": "By manually pasting zip files into the root directory", "C": "By committing node binaries directly to git", "D": "Dependencies are not supported"}, "correct_answer": "A"},
+                {"question_text": f"What is the primary runtime architecture or execution model of {skill_name}?", "options": {"A": "It executes instructions through an optimized engine, virtual machine, or native compiled binary", "B": "It translates code to static HTML files", "C": "It requires physical tape drives", "D": "It runs exclusively on mainframe hardware"}, "correct_answer": "A"},
+                {"question_text": f"How does {skill_name} manage application state, variable scoping, and memory lifetimes?", "options": {"A": "Through defined lexical scoping rules, stack frames, and automatic garbage collection or RAII ownership", "B": "By storing all variables in global browser cookies", "C": "By writing every variable to a temporary text file", "D": "By leaking memory after every function call"}, "correct_answer": "A"},
+                {"question_text": f"What is the recommended approach to error handling and boundary validation in {skill_name}?", "options": {"A": "Validating inputs at boundaries and catching typed exceptions with structured error logging", "B": "Suppressing all runtime exceptions silently", "C": "Hardcoding return values to 0 on failure", "D": "Crashing the operating system on any invalid parameter"}, "correct_answer": "A"},
+                {"question_text": f"Which principle is essential when architecting scalable, maintainable applications with {skill_name}?", "options": {"A": "Separation of concerns, modular interfaces, and clean dependency inversion", "B": "Placing all application logic into a single monolithic 10,000-line file", "C": "Hardcoding production database credentials in source code", "D": "Disabling automated tests and continuous integration"}, "correct_answer": "A"},
+                {"question_text": f"In {skill_name}, what mechanism ensures type safety, data integrity, and contract validation?", "options": {"A": "Static type checking, interfaces, schemas, or runtime contract validators", "B": "Comments written in English only", "C": "Variable name length restrictions", "D": "Running on Linux instead of Windows"}, "correct_answer": "A"},
+                {"question_text": f"How does a developer diagnose bottlenecks, memory leaks, or high CPU usage in a {skill_name} service?", "options": {"A": "Using deterministic profilers, APM telemetry, and memory heap snapshots", "B": "By guessing and deleting random functions", "C": "By turning off the monitor", "D": "By increasing screen brightness"}, "correct_answer": "A"},
+                {"question_text": f"What is the industry best practice for configuring environments (dev, staging, production) in {skill_name}?", "options": {"A": "Injecting configuration via environment variables conforming to 12-Factor App methodology", "B": "Hardcoding URLs inside compiled binaries", "C": "Sharing passwords via Slack channels", "D": "Using identical database passwords for dev and prod"}, "correct_answer": "A"},
+                {"question_text": f"What strategy provides high availability and fault tolerance when deploying {skill_name} services at scale?", "options": {"A": "Horizontal scaling behind a load balancer with automated health check probes", "B": "Running on a single laptop without battery backup", "C": "Disabling TLS/SSL encryption", "D": "Restarting the server manually every hour"}, "correct_answer": "A"}
+            ]
 
     def grade_assessment(self, student_id: int, skill_name: str, submitted_answers: dict, total_questions: int = 10):
         """Grades student answers, calculates percentage, and records verified score in SQLite."""
