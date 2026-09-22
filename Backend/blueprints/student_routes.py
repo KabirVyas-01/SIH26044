@@ -1,3 +1,4 @@
+import json
 from flask import Blueprint, request, jsonify, session
 from models import get_db
 from auth_utils import role_required
@@ -23,7 +24,8 @@ def get_profile():
         """
         SELECT id, name, email, college, skills, github_url, leetcode_url, 
         codeforces_url, resume_url, prior_experience, university_roll_no, 
-        verification_status, verified_at, created_at, institute_id
+        verification_status, verified_at, created_at, institute_id,
+        resume_score, resume_review, resume_text, desired_role
         FROM students 
         WHERE id = ?
         """,
@@ -41,6 +43,13 @@ def get_profile():
         profile['is_verified'] = (profile.get('verification_status') == 'verified')
         profile['documents'] = documents
         profile['verified_skills'] = skills
+        if profile.get('resume_review'):
+            try:
+                profile['resume_review_parsed'] = json.loads(profile['resume_review'])
+            except Exception:
+                profile['resume_review_parsed'] = None
+        else:
+            profile['resume_review_parsed'] = None
 
     return jsonify({'profile': profile}), 200
 
@@ -49,7 +58,7 @@ def get_profile():
 def update_profile():
     student_id = session['user_id']
     data = request.get_json() or {}
-    fields = ['college', 'skills', 'github_url', 'leetcode_url', 'codeforces_url', 'resume_url', 'prior_experience', 'university_roll_no', 'institute_id']
+    fields = ['college', 'skills', 'github_url', 'leetcode_url', 'codeforces_url', 'resume_url', 'prior_experience', 'university_roll_no', 'institute_id', 'desired_role']
     updates = {}
     for f in fields:
         if f in data:
@@ -221,12 +230,33 @@ def get_job_course_recommendations(posting_id):
 @student_bp.route('/ai/resume-analyzer', methods=['POST'])
 @role_required('student')
 def ai_resume_analyzer():
+    student_id = session['user_id']
     data = request.get_json() or {}
     resume_text = data.get('resume_text', '').strip()
     target_role = data.get('target_role', 'Software Engineer').strip()
     if not resume_text:
         return jsonify({'error': 'Please provide resume text or skills to analyze.'}), 400
+
     result = gemini_service.analyze_resume(resume_text, target_role)
+    ats_score = float(result.get('ats_score', 7.5))
+
+    # Persist score, review JSON, resume text, and desired role into SQLite
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        UPDATE students
+        SET resume_score = ?,
+            resume_review = ?,
+            resume_text = ?,
+            desired_role = ?
+        WHERE id = ?
+        """,
+        (ats_score, json.dumps(result), resume_text, target_role, student_id)
+    )
+    conn.commit()
+    conn.close()
+
     return jsonify(result), 200
 
 @student_bp.route('/ai/roadmap-generator', methods=['POST'])

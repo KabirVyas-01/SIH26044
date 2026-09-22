@@ -68,6 +68,8 @@ export interface Student {
   githubUrl?: string;
   leetcodeUrl?: string;
   universityRollNo?: string;
+  resumeReview?: any;
+  resumeText?: string;
 }
 
 export interface University {
@@ -150,6 +152,9 @@ export interface Academician {
 export interface NotificationItem {
   id: string;
   text: string;
+  tag?: string;
+  time?: string;
+  type?: 'success' | 'info' | 'warning' | 'alert';
 }
 
 export interface BackendPosting {

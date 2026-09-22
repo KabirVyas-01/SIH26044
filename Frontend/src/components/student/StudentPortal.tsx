@@ -99,9 +99,11 @@ export const StudentPortal: React.FC<{ go: (page: string) => void }> = ({ go }) 
             const allSkills = Array.from(combinedSkillMap.values());
             const verifiedSkillsCount = allSkills.filter((s) => s.isVerified).length;
 
-            // Calculate real resume score out of 10 based on actual verified skills
+            // Prioritize genuine Gemini ATS score from SQLite if available; fallback to skill tests count
             const realResumeScore =
-              verifiedSkillsCount > 0
+              p.resume_score && p.resume_score > 0
+                ? +Number(p.resume_score).toFixed(1)
+                : verifiedSkillsCount > 0
                 ? +(Math.min(10, 4.0 + verifiedSkillsCount * 1.5)).toFixed(1)
                 : 0;
 
@@ -120,6 +122,8 @@ export const StudentPortal: React.FC<{ go: (page: string) => void }> = ({ go }) 
               resumeScore: realResumeScore,
               potential: realPotential,
               desiredRole: p.desired_role || prev.desiredRole,
+              resumeReview: p.resume_review_parsed || p.resume_review,
+              resumeText: p.resume_text || prev.resumeText,
               githubUrl: p.github_url || prev.githubUrl,
               leetcodeUrl: p.leetcode_url || prev.leetcodeUrl,
               resumeUrl: p.resume_url || prev.resumeUrl,
@@ -144,7 +148,11 @@ export const StudentPortal: React.FC<{ go: (page: string) => void }> = ({ go }) 
           )
         : [...prev.skills, { name: skillName, score, min: 70 }];
 
-      const newResumeScore = +(Math.min(10, 4.0 + updatedSkills.length * 1.5)).toFixed(1);
+      // Preserve existing genuine Gemini score if already computed
+      const newResumeScore =
+        prev.resumeScore > 0
+          ? prev.resumeScore
+          : +(Math.min(10, 4.0 + updatedSkills.length * 1.5)).toFixed(1);
       const newPotential = Math.min(100, 50 + updatedSkills.length * 12);
 
       return {
@@ -157,6 +165,17 @@ export const StudentPortal: React.FC<{ go: (page: string) => void }> = ({ go }) 
     });
   };
 
+  const handleUpdateResume = (score: number, review: any, text: string, role?: string) => {
+    setStudent((prev) => ({
+      ...prev,
+      resumeScore: score,
+      resumeReview: review,
+      resumeText: text,
+      desiredRole: role || prev.desiredRole,
+      resumeHistory: [...prev.resumeHistory.slice(1), score],
+    }));
+  };
+
   const handleUpdateProfile = (updates: Partial<Student>) => {
     setStudent((prev) => ({ ...prev, ...updates }));
   };
@@ -164,7 +183,7 @@ export const StudentPortal: React.FC<{ go: (page: string) => void }> = ({ go }) 
   const renderView = () => {
     switch (active) {
       case 'overview':
-        return <StudentOverview student={student} />;
+        return <StudentOverview student={student} onNavigate={(t) => setActive(t)} />;
       case 'skills':
         return <StudentSkills student={student} onUpdateSkill={handleUpdateSkill} />;
       case 'roadmap':
@@ -172,7 +191,7 @@ export const StudentPortal: React.FC<{ go: (page: string) => void }> = ({ go }) 
       case 'daily':
         return <StudentDaily student={student} />;
       case 'aitools':
-        return <StudentAITools />;
+        return <StudentAITools student={student} onUpdateResume={handleUpdateResume} />;
       case 'field':
         return <StudentField />;
       case 'opportunities':
@@ -182,7 +201,7 @@ export const StudentPortal: React.FC<{ go: (page: string) => void }> = ({ go }) 
       case 'profile':
         return <StudentProfile student={student} onUpdateProfile={handleUpdateProfile} />;
       default:
-        return <StudentOverview student={student} />;
+        return <StudentOverview student={student} onNavigate={(t) => setActive(t)} />;
     }
   };
 

@@ -21,37 +21,90 @@ export const GrowthJourney: React.FC = () => {
   );
 };
 
-export const ResumeScoreCard: React.FC<{ student: Student }> = ({ student }) => {
+export const ResumeScoreCard: React.FC<{ student: Student; onNavigate?: (tab: string) => void }> = ({ student, onNavigate }) => {
+  const hasAudit = Boolean(student.resumeReview && student.resumeScore > 0);
+  const review = student.resumeReview;
+
   return (
     <Card className="p-5">
       <div className="flex items-center justify-between mb-3">
-        <div className="font-display font-semibold">Resume score</div>
-        <span className="font-display text-2xl">
-          {student.resumeScore}
-          <span className="text-sm text-[var(--text-muted)]">/10</span>
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="font-display font-semibold text-base">Resume score</span>
+            {hasAudit ? (
+              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-sagedeep/15 text-sagedeep">
+                Gemini AI Audited
+              </span>
+            ) : (
+              <span className="px-2 py-0.5 rounded-md text-[10px] font-medium bg-black/5 text-[var(--text-muted)]">
+                Skills Estimate
+              </span>
+            )}
+          </div>
+          {student.desiredRole && (
+            <div className="text-xs text-[var(--text-muted)] mt-0.5">Target: {student.desiredRole}</div>
+          )}
+        </div>
+
+        <span className="font-display text-2xl font-bold text-sagedeep">
+          {student.resumeScore > 0 ? student.resumeScore : '--'}
+          <span className="text-sm font-normal text-[var(--text-muted)]">/10</span>
         </span>
       </div>
-      <div className="hscroll no-scrollbar">
-        <div className="flex items-end gap-2 h-20 min-w-max">
+
+      <div className="hscroll no-scrollbar mb-3">
+        <div className="flex items-end gap-2 h-16 min-w-max">
           {student.resumeHistory.map((v, i) => (
             <div key={i} className="w-7 flex flex-col items-center gap-1">
               <div
                 className="w-full bg-sage/70 rounded-t growbar"
-                style={{ height: (v / 10) * 64 + "px" }}
+                style={{ height: `${(v / 10) * 52}px` }}
               />
               <span className="text-[10px] text-[var(--text-muted)]">{v}</span>
             </div>
           ))}
         </div>
       </div>
-      <p className="text-xs text-[var(--text-muted)] mt-3">
-        Improves as you clear skill tests, learn new skills and add stronger projects.
-      </p>
+
+      {hasAudit && review?.verdict && (
+        <div className="p-3 rounded-xl bg-sagedeep/5 border border-sagedeep/15 text-xs text-[#2C3524] mb-3">
+          <span className="font-bold text-sagedeep mr-1">AI Verdict:</span>
+          <span className="italic">"{review.verdict}"</span>
+        </div>
+      )}
+
+      {hasAudit && review?.missing_keywords?.length > 0 && (
+        <div className="mb-3">
+          <div className="text-[11px] font-semibold text-[var(--text-muted)] mb-1">Critical Missing Keywords:</div>
+          <div className="flex flex-wrap gap-1">
+            {review.missing_keywords.slice(0, 4).map((k: string, idx: number) => (
+              <span key={idx} className="px-2 py-0.5 rounded text-[10px] font-medium bg-rose-50 text-rose-800 border border-rose-200">
+                {k}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="flex items-center justify-between pt-2 border-t border-[var(--border)]">
+        <p className="text-xs text-[var(--text-muted)]">
+          {hasAudit ? 'Scored on engineering depth, metrics & alignment.' : 'Calculated from verified tests and project history.'}
+        </p>
+        {onNavigate && (
+          <button
+            type="button"
+            onClick={() => onNavigate('aitools')}
+            className="text-xs font-semibold text-sagedeep hover:underline shrink-0 ml-2"
+          >
+            {hasAudit ? 'Full Gap Analysis →' : 'Audit with Gemini AI →'}
+          </button>
+        )}
+      </div>
     </Card>
   );
 };
 
-export const StudentOverview: React.FC<{ student: Student }> = ({ student }) => {
+export const StudentOverview: React.FC<{ student: Student; onNavigate?: (tab: string) => void }> = ({ student, onNavigate }) => {
   const initialResumeScore = student.resumeHistory[0] || student.resumeScore;
   const improvement = (student.resumeScore - initialResumeScore).toFixed(1);
 
@@ -59,7 +112,7 @@ export const StudentOverview: React.FC<{ student: Student }> = ({ student }) => 
     <div className="space-y-6">
       <PageHeader
         title={student.skills.length > 0 ? `Welcome back, ${student.name.split(' ')[0]}` : `Welcome, ${student.name.split(' ')[0]}!`}
-        desc={student.skills.length > 0 ? `Tracking your path toward ${student.role}.` : `Let's start by taking your initial skill test to calculate your verified score.`}
+        desc={student.skills.length > 0 ? `Tracking your path toward ${student.desiredRole || student.role}.` : `Let's start by taking your initial skill test to calculate your verified score.`}
         action={student.verified ? <VerifiedBadge /> : undefined}
       />
 
@@ -67,7 +120,7 @@ export const StudentOverview: React.FC<{ student: Student }> = ({ student }) => 
         <StatBlock
           label="Resume score"
           value={student.resumeScore > 0 ? `${student.resumeScore}/10` : 'Pending'}
-          sub={student.resumeScore > 0 ? `+${improvement} since joining` : 'Take assessment to calculate'}
+          sub={student.resumeReview ? 'Gemini AI Audited' : (student.resumeScore > 0 ? `+${improvement} since joining` : 'Audit in AI Tools')}
         />
         <StatBlock
           label="Weekly improvement"
@@ -86,15 +139,19 @@ export const StudentOverview: React.FC<{ student: Student }> = ({ student }) => 
         />
       </div>
 
-      <Card className="p-5">
-        <div className="font-display font-semibold mb-4">Skill snapshot for {student.role}</div>
-        {student.skills.map((s) => (
-          <SkillBar key={s.name} {...s} />
-        ))}
-        {student.skills.length === 0 && (
-          <p className="text-xs text-[var(--text-muted)]">No verified skills yet. Take an assessment to add verified skills.</p>
-        )}
-      </Card>
+      <div className="grid lg:grid-cols-2 gap-5">
+        <Card className="p-5">
+          <div className="font-display font-semibold mb-4">Skill snapshot for {student.desiredRole || student.role}</div>
+          {student.skills.map((s) => (
+            <SkillBar key={s.name} {...s} />
+          ))}
+          {student.skills.length === 0 && (
+            <p className="text-xs text-[var(--text-muted)]">No verified skills yet. Take an assessment to add verified skills.</p>
+          )}
+        </Card>
+
+        <ResumeScoreCard student={student} onNavigate={onNavigate} />
+      </div>
 
       <div>
         <div className="font-display font-semibold mb-3">Your growth journey</div>

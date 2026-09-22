@@ -67,4 +67,12 @@ export const authApi = {
       body: JSON.stringify({ email, otp, new_password }),
     });
   },
+
+  async getNotifications(): Promise<{ notifications: import('../types').NotificationItem[] }> {
+    try {
+      return await request('/api/auth/notifications', { method: 'GET' });
+    } catch {
+      return { notifications: [] };
+    }
+  },
 };

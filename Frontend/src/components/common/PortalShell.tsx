@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Icon } from './Icon';
-import { NOTIFICATIONS } from '../../data/mockData';
 import { useAuth } from '../../context/AuthContext';
+import { authApi } from '../../api/auth';
+import { NotificationItem } from '../../types';
 
 export const PORTAL_META: Record<string, { label: string; icon: string; blurb: string }> = {
   student:     { label: 'Students',      icon: 'student',  blurb: 'Learn, test your skills and track real progress.' },
@@ -38,7 +39,31 @@ export const PortalShell: React.FC<PortalShellProps> = ({
   const [mobileNav, setMobileNav] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [loadingNotifs, setLoadingNotifs] = useState(false);
   const { currentUser, logout } = useAuth();
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchNotifs = async () => {
+      setLoadingNotifs(true);
+      try {
+        const res = await authApi.getNotifications();
+        if (isMounted && res && res.notifications) {
+          setNotifications(res.notifications);
+        }
+      } catch {
+        // fallback gracefully
+      } finally {
+        if (isMounted) setLoadingNotifs(false);
+      }
+    };
+    fetchNotifs();
+    return () => {
+      isMounted = false;
+    };
+  }, [currentUser]);
+
   const meta = PORTAL_META[portalKey] || PORTAL_META.student;
   const userPortalKey = currentUser
     ? (currentUser.role === 'institute' ? 'university' : currentUser.role)
@@ -120,16 +145,60 @@ export const PortalShell: React.FC<PortalShellProps> = ({
                 aria-label="Notifications"
               >
                 <Icon name="bell" className="w-[18px] h-[18px]" />
-                <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-amber-400" />
+                {notifications.length > 0 && (
+                  <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-amber-400 ring-2 ring-sagedeep" />
+                )}
               </button>
               {notifOpen && (
-                <div className="absolute right-0 mt-2 w-72 bg-white text-[#2C3524] rounded-xl shadow-lg border border-[#E1D6AE] p-2 rise z-50">
-                  <div className="text-xs font-semibold px-2 py-1.5 text-[#6B7660]">Notifications</div>
-                  {NOTIFICATIONS.map((n) => (
-                    <div key={n.id} className="px-2.5 py-2 text-xs rounded-lg hover:bg-pcream/60">
-                      {n.text}
+                <div className="absolute right-0 mt-2 w-80 max-w-[calc(100vw-2rem)] bg-white text-[#2C3524] rounded-2xl shadow-xl border border-[#E1D6AE] p-2.5 rise z-50 max-h-96 overflow-y-auto">
+                  <div className="flex items-center justify-between px-2 py-1.5 border-b border-[#E1D6AE]/60 mb-1.5">
+                    <div className="text-xs font-bold text-[#2C3524] flex items-center gap-1.5">
+                      <span>Notifications</span>
+                      <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-sage/20 text-sagedeep">
+                        {notifications.length}
+                      </span>
                     </div>
-                  ))}
+                    {loadingNotifs && (
+                      <span className="text-[10px] text-[#6B7660] animate-pulse">Syncing…</span>
+                    )}
+                  </div>
+
+                  {notifications.length === 0 ? (
+                    <div className="py-6 text-center text-xs text-[#6B7660]">
+                      No new notifications right now.
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {notifications.map((n) => (
+                        <div
+                          key={n.id}
+                          className="p-2.5 text-xs rounded-xl hover:bg-pcream/60 transition border border-transparent hover:border-[#E1D6AE]/40"
+                        >
+                          <div className="flex items-center justify-between gap-1.5 mb-1">
+                            {n.tag && (
+                              <span
+                                className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                                  n.type === 'success'
+                                    ? 'bg-emerald-100 text-emerald-800'
+                                    : n.type === 'warning'
+                                    ? 'bg-amber-100 text-amber-900'
+                                    : 'bg-sagedeep/10 text-sagedeep'
+                                }`}
+                              >
+                                {n.tag}
+                              </span>
+                            )}
+                            {n.time && (
+                              <span className="text-[10px] text-[#8B9480] ml-auto font-medium">
+                                {n.time}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs leading-relaxed text-[#2C3524]">{n.text}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

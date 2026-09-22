@@ -39,6 +39,10 @@ def init_db():
         university_roll_no TEXT,
         verification_status TEXT DEFAULT 'unverified' CHECK(verification_status IN ('unverified', 'pending', 'verified', 'rejected')),
         verified_at TIMESTAMP,
+        resume_score REAL DEFAULT 0.0,
+        resume_review TEXT,
+        resume_text TEXT,
+        desired_role TEXT DEFAULT 'Software Engineer',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (institute_id) REFERENCES institutes(id) ON DELETE SET NULL
     );
@@ -161,5 +165,24 @@ def init_db():
     );
     """)
     conn.commit()
+
+    # Migration check for existing SQLite databases
+    cursor.execute("PRAGMA table_info(students)")
+    existing_cols = {row['name'] for row in cursor.fetchall()}
+    student_cols = [
+        ('resume_score', 'REAL DEFAULT 0.0'),
+        ('resume_review', 'TEXT'),
+        ('resume_text', 'TEXT'),
+        ('desired_role', "TEXT DEFAULT 'Software Engineer'")
+    ]
+    for col_name, col_def in student_cols:
+        if col_name not in existing_cols:
+            try:
+                cursor.execute(f"ALTER TABLE students ADD COLUMN {col_name} {col_def}")
+                print(f"[Database Migration] Added column '{col_name}' to students table.")
+            except Exception as e:
+                print(f"[Database Migration Warning] Could not add column '{col_name}': {e}")
+
+    conn.commit()
     conn.close()
-    print("[Database] All 12 tables initialized successfully!")
+    print("[Database] All 12 tables and migrations initialized successfully!")

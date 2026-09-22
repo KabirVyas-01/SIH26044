@@ -310,33 +310,146 @@ class GeminiService:
     # 4. INTERACTIVE AI TOOLS: RESUME, ROADMAP, INTERVIEW PREP
     # =========================================================================
     def analyze_resume(self, resume_text: str, target_role: str = "Software Engineer"):
-        """Evaluates student resume/skills, computes ATS score out of 10, and identifies skill gaps."""
+        """Evaluates student resume thoroughly via Gemini AI or dynamic semantic text heuristics.
+        Computes accurate ATS score (1.0-10.0), section breakdowns, executive verdict, and actionable gap analysis.
+        """
         prompt = (
-            f"Act as a technical hiring manager. Analyze this candidate's resume/skills for the target role '{target_role}':\n\n"
-            f"{resume_text}\n\n"
-            f"Return ONLY valid JSON with keys: "
-            f"'ats_score' (number between 1 and 10), "
-            f"'strengths' (list of 2-3 strings), "
-            f"'missing_keywords' (list of 3-4 strings), and "
-            f"'recommendations' (list of 2 strings for improvement)."
+            f"You are a Senior Technical Talent Partner and ATS Evaluation Engine at a premier technology company. "
+            f"Conduct an in-depth, rigorous audit of this candidate's resume/profile for the role: '{target_role}'.\n\n"
+            f"RESUME TEXT / PROFILE CONTENT:\n{resume_text}\n\n"
+            f"EVALUATION CRITERIA:\n"
+            f"1. ats_score: Realistic ATS readiness score as a decimal number between 1.0 and 10.0 (e.g. 7.4, 8.6). "
+            f"Calibrate against real industry hiring bars. Deduct for lack of metrics, generic buzzwords, or missing foundational tech.\n"
+            f"2. verdict: A 2-sentence executive summary verdict on candidate readiness, experience tier, and top priority.\n"
+            f"3. section_scores: Object with ratings from 1.0 to 10.0 for:\n"
+            f"   - 'technical_depth': Core language mastery, data structures, backend/frontend engineering depth.\n"
+            f"   - 'project_impact': Evidence of scale, measurable metrics (%, ms, users), and end-to-end delivery.\n"
+            f"   - 'clarity_structure': Formatting effectiveness, conciseness, and strong action verbs.\n"
+            f"   - 'role_alignment': Direct relevance to '{target_role}'.\n"
+            f"4. strengths: List of 3-4 bullet points identifying specific competencies and frameworks clearly demonstrated in their text.\n"
+            f"5. missing_keywords: List of 4-6 essential tools, libraries, architectural patterns, or cloud technologies critical for a '{target_role}' that are absent or weak.\n"
+            f"6. gap_analysis: A thorough paragraph detailing the exact gaps preventing this candidate from passing senior recruiter filters for '{target_role}'.\n"
+            f"7. actionable_steps: List of 3-4 high-impact, concrete action items to elevate ATS score (e.g., quantify results, deploy live projects, add testing/CI/CD).\n\n"
+            f"Return ONLY valid JSON matching this exact structure without markdown backticks:\n"
+            f"{{\n"
+            f'  "ats_score": 7.8,\n'
+            f'  "verdict": "...",\n'
+            f'  "section_scores": {{"technical_depth": 7.5, "project_impact": 6.8, "clarity_structure": 8.5, "role_alignment": 8.0}},\n'
+            f'  "strengths": ["...", "..."],\n'
+            f'  "missing_keywords": ["...", "..."],\n'
+            f'  "gap_analysis": "...",\n'
+            f'  "actionable_steps": ["...", "..."],\n'
+            f'  "recommendations": ["...", "..."]\n'
+            f"}}"
         )
         raw_ai = self._call_gemini(prompt)
         if raw_ai:
             try:
                 clean = raw_ai.replace("```json", "").replace("```", "").strip()
-                return json.loads(clean)
-            except Exception:
-                pass
+                parsed = json.loads(clean)
+                if isinstance(parsed, dict) and "ats_score" in parsed:
+                    # Normalize recommendations / actionable steps
+                    if "actionable_steps" in parsed and "recommendations" not in parsed:
+                        parsed["recommendations"] = parsed["actionable_steps"]
+                    elif "recommendations" in parsed and "actionable_steps" not in parsed:
+                        parsed["actionable_steps"] = parsed["recommendations"]
+                    return parsed
+            except Exception as e:
+                print(f"[GeminiService] Failed to parse resume analysis JSON: {e}")
 
-        # Smart Fallback
+        # Dynamic Smart Heuristic Fallback based on actual resume text analysis
+        return self._heuristic_resume_analysis(resume_text, target_role)
+
+    def _heuristic_resume_analysis(self, text: str, target_role: str):
+        """Dynamic heuristic analyzer that inspects the candidate's actual text when Gemini is offline."""
+        lower = text.lower()
+        words = lower.split()
+        word_count = len(words)
+
+        # 1. Tech Stack Detection
+        tech_keywords = {
+            'python': 'Python', 'javascript': 'JavaScript', 'typescript': 'TypeScript',
+            'react': 'React.js', 'node': 'Node.js', 'sql': 'SQL', 'postgresql': 'PostgreSQL',
+            'docker': 'Docker', 'kubernetes': 'Kubernetes', 'aws': 'AWS', 'git': 'Git/GitHub',
+            'mongodb': 'MongoDB', 'flask': 'Flask', 'fastapi': 'FastAPI', 'django': 'Django',
+            'redis': 'Redis', 'tailwind': 'Tailwind CSS', 'graphql': 'GraphQL', 'ci/cd': 'CI/CD Pipelines'
+        }
+        found_skills = [name for kw, name in tech_keywords.items() if kw in lower]
+        if not found_skills and word_count > 10:
+            found_skills = ['Fundamental Computing Principles', 'Software Problem Solving']
+
+        # 2. Check for Quantified Metrics & Action Verbs
+        import re
+        metrics_matches = re.findall(r'\b\d+(?:[\.,]\d+)?\s*(?:%|x|k|ms|s|users|requests|mb|gb|stars|times)?\b', text)
+        action_verbs = ['built', 'developed', 'designed', 'implemented', 'architected', 'optimized', 'deployed', 'spearheaded', 'created', 'led', 'scaled', 'integrated']
+        found_verbs = [v for v in action_verbs if v in lower]
+
+        # 3. Dynamic Section Scoring
+        tech_depth = min(9.5, max(4.0, 5.0 + len(found_skills) * 0.7))
+        project_impact = min(9.2, max(3.5, 4.5 + len(metrics_matches) * 0.8 + len(found_verbs) * 0.3))
+        clarity_structure = min(9.0, max(4.0, 5.0 + (1.5 if word_count >= 80 else 0.5) + (1.5 if len(found_verbs) >= 2 else 0.5)))
+        role_alignment = min(9.4, max(4.0, 5.5 + (1.5 if any(r.lower() in lower for r in target_role.split()) else 0.0) + (1.5 if len(found_skills) >= 3 else 0.5)))
+
+        ats_score = round((tech_depth * 0.35 + project_impact * 0.30 + clarity_structure * 0.15 + role_alignment * 0.20), 1)
+
+        # 4. Role-Specific Missing Keywords
+        role_reqs = {
+            'backend': ['Docker Containerization', 'Redis Caching', 'PostgreSQL / SQL Indexing', 'CI/CD Automation', 'REST / gRPC APIs', 'System Design Patterns'],
+            'frontend': ['TypeScript Generics', 'Next.js / SSR', 'Tailwind CSS', 'Redux / Zustand', 'Web Performance & Lighthouse', 'Unit Testing (Jest/Playwright)'],
+            'full stack': ['Docker / Microservices', 'CI/CD Pipelines', 'State Management', 'PostgreSQL / Redis', 'Cloud Hosting (AWS/GCP)', 'Automated Integration Tests'],
+            'ai': ['PyTorch / TensorFlow', 'Vector Databases (Chroma/Pinecone)', 'Model Quantization', 'LangChain / LlamaIndex', 'RAG Pipelines', 'MLOps & Experiment Tracking'],
+            'data': ['Pandas & NumPy', 'Data Warehousing (Snowflake)', 'Apache Spark', 'Advanced SQL Window Functions', 'ETL Pipelines', 'Tableau / PowerBI']
+        }
+        matched_category = 'full stack'
+        for k in role_reqs:
+            if k in target_role.lower():
+                matched_category = k
+                break
+        missing_pool = role_reqs.get(matched_category, role_reqs['full stack'])
+        missing_keywords = [m for m in missing_pool if not any(w.lower() in lower for w in m.split()[:2])][:4]
+        if not missing_keywords:
+            missing_keywords = ['System Architecture Diagrams', 'Automated E2E Testing', 'Load Balancing & Caching', 'Prometheus / Grafana Monitoring']
+
+        # 5. Strengths
+        strengths = [
+            f"Demonstrated practical proficiency in {', '.join(found_skills[:3]) if found_skills else 'core engineering fundamentals'}.",
+            f"Utilized active engineering verbs ({', '.join(found_verbs[:2]) if found_verbs else 'practical implementation'}) showcasing initiative in project development.",
+            f"Documented {len(metrics_matches)} quantified outcome(s) indicating measurable orientation towards results." if metrics_matches else "Clean articulation of core project domain and technical responsibilities."
+        ]
+
+        # 6. Actionable Steps & Gap Analysis
+        actionable_steps = [
+            "Quantify project outcomes using XYZ format: Accomplished [X] as measured by [Y], by doing [Z] (e.g. reduced API latency by 35%).",
+            f"Incorporate target role standard keywords: {', '.join(missing_keywords[:3])}.",
+            "Include live production URLs or interactive demo links for key portfolio projects.",
+            "Add a dedicated Systems Architecture & Testing section showing CI/CD and unit test coverage."
+        ]
+
+        verdict = (
+            f"Candidate shows a solid foundational base for '{target_role}' with recognizable strengths in {', '.join(found_skills[:2]) if found_skills else 'software development'}. "
+            f"To reach the top 10% candidate tier, focus on quantifying engineering impact and showcasing modern tooling like {missing_keywords[0] if missing_keywords else 'Docker and CI/CD'}."
+        )
+
+        gap_analysis = (
+            f"While the candidate displays core technical capability, there is a distinct gap in demonstrating production-scale readiness for a '{target_role}'. "
+            f"Specifically, technical recruiters and ATS algorithms will look for concrete evidence of {missing_keywords[0] if missing_keywords else 'cloud architecture'}, "
+            f"rigorous automated testing, and performance metrics. Closing these gaps will significantly elevate screening pass rates."
+        )
+
         return {
-            "ats_score": 7.8,
-            "strengths": ["Clear technical foundation in core programming", "Good alignment with problem solving"],
-            "missing_keywords": ["Docker/Containerization", "CI/CD Pipelines", "System Design Patterns"],
-            "recommendations": [
-                "Quantify project outcomes (e.g. 'reduced latency by 25%' instead of just listing features).",
-                f"Highlight specific projects that use {target_role} standard toolchains."
-            ]
+            "ats_score": ats_score,
+            "verdict": verdict,
+            "section_scores": {
+                "technical_depth": round(tech_depth, 1),
+                "project_impact": round(project_impact, 1),
+                "clarity_structure": round(clarity_structure, 1),
+                "role_alignment": round(role_alignment, 1)
+            },
+            "strengths": strengths,
+            "missing_keywords": missing_keywords,
+            "gap_analysis": gap_analysis,
+            "actionable_steps": actionable_steps,
+            "recommendations": actionable_steps
         }
 
     def generate_career_roadmap(self, target_role: str):

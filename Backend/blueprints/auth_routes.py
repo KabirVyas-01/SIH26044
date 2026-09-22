@@ -564,3 +564,284 @@ def reset_password():
         return jsonify({'error': 'Account not found to update password.'}), 404
 
     return jsonify({'message': 'Password has been successfully reset! You can now log in with your new password.'}), 200
+
+# =========================================================================
+# 11. DYNAMIC ROLE-SPECIFIC NOTIFICATIONS
+# =========================================================================
+
+@auth_bp.route('/notifications', methods=['GET'])
+def get_notifications():
+    """Returns dynamic, role-relevant notifications based on database state and current session."""
+    user = get_current_user()
+    conn = get_db()
+    cursor = conn.cursor()
+    notifications = []
+
+    if not user:
+        # Default helpful onboarding notifications for visitors
+        notifications = [
+            {
+                "id": "notif-guest-1",
+                "text": "Welcome to Confluence! Register or log in to verify technical skills and track applications.",
+                "tag": "Welcome",
+                "type": "info",
+                "time": "Just now"
+            },
+            {
+                "id": "notif-guest-2",
+                "text": "Explore active internships and research listings across premier institutes and companies.",
+                "tag": "Opportunities",
+                "type": "info",
+                "time": "1h ago"
+            },
+            {
+                "id": "notif-guest-3",
+                "text": "Skill assessments now support 10 timed questions with AI verification badges.",
+                "tag": "Assessment",
+                "type": "success",
+                "time": "Today"
+            }
+        ]
+        conn.close()
+        return jsonify({'notifications': notifications}), 200
+
+    role = user.get('role')
+    user_id = user.get('user_id')
+
+    if role == 'student':
+        # 1. Student Info
+        cursor.execute(
+            """
+            SELECT s.name, s.college, s.verification_status, s.university_roll_no, 
+                   s.resume_score, s.desired_role, inst.name as inst_name
+            FROM students s
+            LEFT JOIN institutes inst ON s.institute_id = inst.id
+            WHERE s.id = ?
+            """,
+            (user_id,)
+        )
+        st = cursor.fetchone()
+        inst_label = (st['inst_name'] if st and st['inst_name'] else (st['college'] if st and st['college'] else 'your university'))
+
+        if st:
+            status = st['verification_status'] or 'unverified'
+            if status == 'verified':
+                notifications.append({
+                    "id": "notif-st-ver",
+                    "text": f"Institutional roll number verified by {inst_label}! Verified student badge active on your profile.",
+                    "tag": "Institute",
+                    "type": "success",
+                    "time": "Verified"
+                })
+            elif status == 'pending':
+                roll_disp = f" (Roll: {st['university_roll_no']})" if st['university_roll_no'] else ""
+                notifications.append({
+                    "id": "notif-st-ver-pending",
+                    "text": f"Your institutional verification request{roll_disp} is currently under review by {inst_label}.",
+                    "tag": "Verification",
+                    "type": "warning",
+                    "time": "Pending"
+                })
+            else:
+                notifications.append({
+                    "id": "notif-st-ver-prompt",
+                    "text": "Submit your university roll number in Profile to request official institutional verification.",
+                    "tag": "Action Required",
+                    "type": "info",
+                    "time": "Prompt"
+                })
+
+            # Resume Score Status
+            r_score = st['resume_score']
+            if r_score and float(r_score) > 0:
+                notifications.append({
+                    "id": "notif-st-resume",
+                    "text": f"Gemini ATS Audit: Resume rated {float(r_score):.1f}/10 for {st['desired_role'] or 'Software Engineer'}. View detailed gap analysis in AI Tools.",
+                    "tag": "AI ATS",
+                    "type": "success",
+                    "time": "Updated"
+                })
+            else:
+                notifications.append({
+                    "id": "notif-st-resume-prompt",
+                    "text": "Analyze your resume with Gemini AI in the AI Tools Hub to compute ATS score and find skill gaps.",
+                    "tag": "AI Tools",
+                    "type": "info",
+                    "time": "Recommended"
+                })
+
+        # 2. Verified Skills
+        cursor.execute(
+            """
+            SELECT skill_name, percentage, assessed_at 
+            FROM student_skill_scores 
+            WHERE student_id = ? 
+            ORDER BY assessed_at DESC LIMIT 2
+            """,
+            (user_id,)
+        )
+        skill_rows = cursor.fetchall()
+        for idx, sk in enumerate(skill_rows):
+            notifications.append({
+                "id": f"notif-st-skill-{idx}",
+                "text": f"Verified skill credential earned: {sk['skill_name']} test passed with {sk['percentage']}% score.",
+                "tag": "Skill Badge",
+                "type": "success",
+                "time": "Verified"
+            })
+
+        # 3. Applications
+        cursor.execute(
+            """
+            SELECT a.status, a.applied_date, p.title, ind.company_name, aca.name as prof_name
+            FROM applications a
+            JOIN postings p ON a.posting_id = p.id
+            LEFT JOIN industries ind ON p.industry_id = ind.id
+            LEFT JOIN academicians aca ON p.academician_id = aca.id
+            WHERE a.student_id = ?
+            ORDER BY a.applied_date DESC LIMIT 2
+            """,
+            (user_id,)
+        )
+        app_rows = cursor.fetchall()
+        for idx, app in enumerate(app_rows):
+            org = app['company_name'] or app['prof_name'] or 'Host'
+            status_text = app['status'].capitalize()
+            notifications.append({
+                "id": f"notif-st-app-{idx}",
+                "text": f"Application for '{app['title']}' at {org} is marked as '{status_text}'.",
+                "tag": "Application",
+                "type": "info",
+                "time": "Recent"
+            })
+
+        # 4. Recent Matching Postings
+        cursor.execute(
+            """
+            SELECT p.title, p.posting_type, ind.company_name 
+            FROM postings p
+            LEFT JOIN industries ind ON p.industry_id = ind.id
+            ORDER BY p.created_at DESC LIMIT 2
+            """
+        )
+        post_rows = cursor.fetchall()
+        for idx, pst in enumerate(post_rows):
+            comp = pst['company_name'] or 'Partner'
+            notifications.append({
+                "id": f"notif-st-post-{idx}",
+                "text": f"New {pst['posting_type'].capitalize()} posted: '{pst['title']}' by {comp}.",
+                "tag": "Opportunity",
+                "type": "info",
+                "time": "New"
+            })
+
+    elif role == 'industry':
+        cursor.execute(
+            """
+            SELECT s.name, s.college, p.title, a.applied_date
+            FROM applications a
+            JOIN postings p ON a.posting_id = p.id
+            JOIN students s ON a.student_id = s.id
+            WHERE p.industry_id = ?
+            ORDER BY a.applied_date DESC LIMIT 3
+            """,
+            (user_id,)
+        )
+        applicant_rows = cursor.fetchall()
+        for idx, app in enumerate(applicant_rows):
+            clg = f" from {app['college']}" if app['college'] else ""
+            notifications.append({
+                "id": f"notif-ind-app-{idx}",
+                "text": f"New candidate: {app['name']}{clg} applied for '{app['title']}'.",
+                "tag": "Applicants",
+                "type": "success",
+                "time": "Recent"
+            })
+
+        cursor.execute("SELECT COUNT(DISTINCT student_id) as count FROM student_skill_scores WHERE percentage >= 70")
+        verified_count = cursor.fetchone()['count'] or 0
+        notifications.append({
+            "id": "notif-ind-talent",
+            "text": f"{verified_count} verified students have earned >=70% on technical skill assessments in the talent database.",
+            "tag": "Talent Pool",
+            "type": "info",
+            "time": "Live"
+        })
+
+        cursor.execute("SELECT COUNT(*) as count FROM postings WHERE industry_id = ?", (user_id,))
+        active_posts = cursor.fetchone()['count'] or 0
+        notifications.append({
+            "id": "notif-ind-posts",
+            "text": f"You have {active_posts} active listings live and receiving student applications.",
+            "tag": "Postings",
+            "type": "info",
+            "time": "Status"
+        })
+
+    elif role == 'academician':
+        cursor.execute(
+            """
+            SELECT s.name, p.title, a.applied_date
+            FROM applications a
+            JOIN postings p ON a.posting_id = p.id
+            JOIN students s ON a.student_id = s.id
+            WHERE p.academician_id = ?
+            ORDER BY a.applied_date DESC LIMIT 3
+            """,
+            (user_id,)
+        )
+        applicant_rows = cursor.fetchall()
+        for idx, app in enumerate(applicant_rows):
+            notifications.append({
+                "id": f"notif-aca-app-{idx}",
+                "text": f"Student {app['name']} applied to collaborate on '{app['title']}'.",
+                "tag": "Research",
+                "type": "success",
+                "time": "Recent"
+            })
+
+        notifications.append({
+            "id": "notif-aca-status",
+            "text": "Academic research and mentorship listings synchronized across regional universities.",
+            "tag": "Network",
+            "type": "info",
+            "time": "Active"
+        })
+
+    elif role == 'institute':
+        cursor.execute("SELECT COUNT(*) as count FROM students WHERE institute_id = ? AND verification_status = 'pending'", (user_id,))
+        pending_count = cursor.fetchone()['count'] or 0
+
+        cursor.execute("SELECT COUNT(*) as count FROM students WHERE institute_id = ? AND verification_status = 'verified'", (user_id,))
+        verified_count = cursor.fetchone()['count'] or 0
+
+        cursor.execute("SELECT COUNT(*) as count FROM students WHERE institute_id = ?", (user_id,))
+        total_students = cursor.fetchone()['count'] or 0
+
+        if pending_count > 0:
+            notifications.append({
+                "id": "notif-inst-pending",
+                "text": f"{pending_count} student verification request(s) awaiting roll number review in the Verification Portal.",
+                "tag": "Pending Action",
+                "type": "warning",
+                "time": "Urgent"
+            })
+
+        notifications.append({
+            "id": "notif-inst-verified",
+            "text": f"{verified_count} of {total_students} registered students have been officially verified by your institution.",
+            "tag": "Verification",
+            "type": "success",
+            "time": "Overview"
+        })
+
+        notifications.append({
+            "id": "notif-inst-tpo",
+            "text": "Campus Placement Readiness Index updated with latest student skill test scores.",
+            "tag": "TPO Analytics",
+            "type": "info",
+            "time": "Today"
+        })
+
+    conn.close()
+    return jsonify({'notifications': notifications}), 200
