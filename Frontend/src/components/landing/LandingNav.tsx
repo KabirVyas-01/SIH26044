@@ -19,10 +19,10 @@ export const LandingNav: React.FC<LandingNavProps> = ({ go, openAuth }) => {
 
   return (
     <header
-      className="sticky top-0 z-40 backdrop-blur bg-deepblue/90 text-cream"
+      className="sticky top-0 z-40 backdrop-blur bg-deepblue/90 text-cream w-full max-w-full overflow-hidden"
       style={{ paddingTop: 'env(safe-area-inset-top,0px)' }}
     >
-      <div className="max-w-7xl mx-auto px-5 sm:px-8 h-16 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between w-full">
         <button
           onClick={() => go(userPortalKey || 'landing')}
           className="font-display text-xl font-semibold tracking-tight focus-ring rounded"
