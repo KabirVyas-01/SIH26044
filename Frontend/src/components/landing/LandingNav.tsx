@@ -27,7 +27,7 @@ export const LandingNav: React.FC<LandingNavProps> = ({ go, openAuth }) => {
           onClick={() => go(userPortalKey || 'landing')}
           className="font-display text-xl font-semibold tracking-tight focus-ring rounded"
         >
-          Confluence
+          VidyaSarthi
         </button>
         <nav className="hidden md:flex items-center gap-1">
           {items.map((k) => (

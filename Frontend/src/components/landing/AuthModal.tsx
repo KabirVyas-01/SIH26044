@@ -242,7 +242,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose, setMode, on
       return forgotStep === 'request' ? 'Reset your password' : 'Set new password';
     }
     if (authView === 'login') {
-      return 'Log in to Confluence';
+      return 'Log in to VidyaSarthi';
     }
     return otpStep ? 'Verify your email' : 'Create your account';
   };

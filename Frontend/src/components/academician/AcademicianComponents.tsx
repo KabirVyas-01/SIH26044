@@ -150,7 +150,7 @@ export const AcademicianPapers: React.FC<{ papers: ResearchPaper[] }> = ({ paper
     <div className="space-y-6">
       <PageHeader
         title="My papers"
-        desc="Everything you've published on Confluence."
+        desc="Everything you've published on VidyaSarthi."
       />
       <div className="space-y-4">
         {papers.map((p) => (

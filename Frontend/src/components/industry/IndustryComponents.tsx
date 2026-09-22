@@ -59,7 +59,7 @@ export const IndustryOverview: React.FC<{ company: Company }> = ({ company }) =>
     <div className="space-y-6">
       <PageHeader
         title={company.name}
-        desc={`${company.field} · hiring on Confluence`}
+        desc={`${company.field} · hiring on VidyaSarthi`}
         action={
           <Button variant="primary" onClick={() => setShowPostModal((v) => !v)}>
             + Post new opportunity

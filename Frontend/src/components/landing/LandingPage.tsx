@@ -26,7 +26,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ go, openAuth }) => {
               Where research becomes learning, and learning becomes opportunity.
             </h1>
             <p className="mt-4 sm:mt-6 text-cream/75 text-sm sm:text-base lg:text-lg max-w-lg leading-relaxed break-words">
-              Confluence connects academicians, students, universities and industries in a
+              VidyaSarthi connects academicians, students, universities and industries in a
               single, continuous loop — instead of four separate systems that don't talk to each other.
             </p>
             <div className="mt-6 sm:mt-8 flex flex-wrap gap-2.5 sm:gap-3">
@@ -138,7 +138,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ go, openAuth }) => {
       </section>
 
       <footer className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 text-xs text-deepblue/50 flex flex-wrap items-center justify-between gap-3 w-full">
-        <span>© 2026 Confluence — a demonstration prototype.</span>
+        <span>© 2026 VidyaSarthi — a demonstration prototype.</span>
         <span>Research + Learning + Universities + Industry</span>
       </footer>
     </div>

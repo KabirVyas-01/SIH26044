@@ -97,7 +97,7 @@ export const PortalShell: React.FC<PortalShellProps> = ({
             onClick={() => go(userPortalKey || 'landing')}
             className="font-display text-lg font-semibold shrink-0 focus-ring rounded"
           >
-            Confluence
+            VidyaSarthi
           </button>
           <span className="hidden sm:inline text-pcream/50">/</span>
           <span className="hidden sm:inline text-sm font-medium text-pcream/85">{meta.label} Portal</span>

@@ -154,7 +154,7 @@ export const UniversityOverview: React.FC<{ uni: University; students: Student[]
       />
       <div className="grid sm:grid-cols-4 gap-3">
         <StatBlock
-          label="Students on Confluence"
+          label="Students on VidyaSarthi"
           value={totalCount}
           sub={liveStats ? "live database" : "demo sample"}
         />

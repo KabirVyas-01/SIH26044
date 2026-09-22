@@ -340,13 +340,13 @@ def send_real_email_otp(to_email: str, otp_code: str) -> bool:
 
     try:
         msg = MIMEMultipart('alternative')
-        msg['Subject'] = f"{otp_code} is your Confluence Verification Code"
-        msg['From'] = f"Confluence Verification <{smtp_email}>"
+        msg['Subject'] = f"{otp_code} is your VidyaSarthi Verification Code"
+        msg['From'] = f"VidyaSarthi Verification <{smtp_email}>"
         msg['To'] = to_email
 
         html_content = f"""
         <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; border: 1px solid #E1D6AE; border-radius: 12px; background-color: #FDFBF7;">
-            <h2 style="color: #2C3524; margin-bottom: 8px;">Confluence Verification</h2>
+            <h2 style="color: #2C3524; margin-bottom: 8px;">VidyaSarthi Verification</h2>
             <p style="color: #6B7660; font-size: 14px;">Use the following 6-digit code to verify your account registration:</p>
             <div style="margin: 24px 0; padding: 14px; background: #2C3524; color: #F2E8CF; font-size: 28px; font-weight: bold; letter-spacing: 6px; text-align: center; border-radius: 8px;">
                 {otp_code}
@@ -435,14 +435,14 @@ def send_password_reset_email(to_email: str, otp_code: str) -> bool:
 
     try:
         msg = MIMEMultipart('alternative')
-        msg['Subject'] = f"{otp_code} is your Confluence Password Reset Code"
-        msg['From'] = f"Confluence Security <{smtp_email}>"
+        msg['Subject'] = f"{otp_code} is your VidyaSarthi Password Reset Code"
+        msg['From'] = f"VidyaSarthi Security <{smtp_email}>"
         msg['To'] = to_email
 
         html_content = f"""
         <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; border: 1px solid #E1D6AE; border-radius: 12px; background-color: #FDFBF7;">
-            <h2 style="color: #2C3524; margin-bottom: 8px;">Confluence Password Reset</h2>
-            <p style="color: #6B7660; font-size: 14px;">We received a request to reset your Confluence account password. Use the following 6-digit code:</p>
+            <h2 style="color: #2C3524; margin-bottom: 8px;">VidyaSarthi Password Reset</h2>
+            <p style="color: #6B7660; font-size: 14px;">We received a request to reset your VidyaSarthi account password. Use the following 6-digit code:</p>
             <div style="margin: 24px 0; padding: 14px; background: #2C3524; color: #F2E8CF; font-size: 28px; font-weight: bold; letter-spacing: 6px; text-align: center; border-radius: 8px;">
                 {otp_code}
             </div>
@@ -582,7 +582,7 @@ def get_notifications():
         notifications = [
             {
                 "id": "notif-guest-1",
-                "text": "Welcome to Confluence! Register or log in to verify technical skills and track applications.",
+                "text": "Welcome to VidyaSarthi! Register or log in to verify technical skills and track applications.",
                 "tag": "Welcome",
                 "type": "info",
                 "time": "Just now"
