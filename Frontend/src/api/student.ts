@@ -60,17 +60,35 @@ export const studentApi = {
     });
   },
 
-  async generateRoadmap(targetRole: string = 'Full Stack Developer'): Promise<any> {
+  async generateRoadmap(
+    targetRole: string = 'Full Stack Developer',
+    level: string = 'intermediate',
+    durationWeeks: number = 4,
+    currentSkills?: string
+  ): Promise<any> {
     return request('/api/student/ai/roadmap-generator', {
       method: 'POST',
-      body: JSON.stringify({ target_role: targetRole }),
+      body: JSON.stringify({
+        target_role: targetRole,
+        level,
+        duration_weeks: durationWeeks,
+        current_skills: currentSkills,
+      }),
     });
   },
 
-  async getInterviewQuestions(skill: string = 'Python'): Promise<any> {
+  async getInterviewQuestions(
+    skill: string = 'Python',
+    level: string = 'intermediate',
+    roundType: string = 'technical'
+  ): Promise<any> {
     return request('/api/student/ai/interview-prep', {
       method: 'POST',
-      body: JSON.stringify({ skill }),
+      body: JSON.stringify({
+        skill,
+        level,
+        round_type: roundType,
+      }),
     });
   },
 };

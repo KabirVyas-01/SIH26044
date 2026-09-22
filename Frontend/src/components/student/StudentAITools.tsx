@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, PageHeader, Button, Tag, ProgressBar } from '../common/UIComponents';
 import { FIELD_UPDATES } from '../../data/mockData';
 import { studentApi } from '../../api/student';
@@ -9,15 +9,42 @@ interface StudentAIToolsProps {
   onUpdateResume?: (score: number, review: any, text: string, role?: string) => void;
 }
 
+const RESUME_ROLE_OPTIONS = [
+  'Full Stack Developer',
+  'Backend Engineer',
+  'Frontend Developer',
+  'AI/ML Specialist',
+  'Cloud & DevOps Engineer',
+  'Cybersecurity Analyst',
+  'Data Scientist',
+  'Mobile App Developer'
+];
+
+const ROADMAP_ROLE_OPTIONS = [
+  'Full Stack Developer',
+  'Backend Engineer',
+  'Frontend Developer',
+  'AI/ML Specialist',
+  'Data Scientist',
+  'Cloud & DevOps',
+  'Cybersecurity Analyst',
+  'Mobile App Developer',
+  'UI/UX Designer',
+  'Blockchain & Web3'
+];
+
+const POPULAR_SKILLS = ['Python', 'React', 'JavaScript', 'SQL', 'DevOps & Docker', 'Data Structures', 'Git & CI/CD'];
+
 export const StudentAITools: React.FC<StudentAIToolsProps> = ({ student, onUpdateResume }) => {
   const [activeTool, setActiveTool] = useState<'resume' | 'roadmap' | 'interview'>('resume');
 
   // 1. Resume Analyzer State
   const [resumeInput, setResumeInput] = useState(student?.resumeText || '');
-  const [targetRole, setTargetRole] = useState(student?.desiredRole || student?.role || 'Software Engineer');
+  const [targetRole, setTargetRole] = useState(student?.desiredRole || student?.role || 'Full Stack Developer');
   const [resumeResult, setResumeResult] = useState<any>(student?.resumeReview || null);
   const [loadingResume, setLoadingResume] = useState(false);
   const [justSaved, setJustSaved] = useState(false);
+  const [autoFilledBadge, setAutoFilledBadge] = useState(false);
 
   useEffect(() => {
     if (student) {
@@ -27,16 +54,68 @@ export const StudentAITools: React.FC<StudentAIToolsProps> = ({ student, onUpdat
     }
   }, [student]);
 
+  // Auto-fill from student profile
+  const handleAutoFillResume = () => {
+    if (!student) return;
+    const skillsList = student.skills?.map((s) => s.name).join(', ') || 'Python, JavaScript, React, SQL, Git';
+    const projectsList = student.projects?.length
+      ? student.projects.map((p) => `• ${p.name}: Built with ${(p.tech || []).join(', ')}. ${p.review || ''}`).join('\n')
+      : '• Scalable Web Application: Built with React, Node.js, and SQLite. Implemented JWT authentication and responsive UI.';
+    const experienceText = student.priorExperience || 'Fresher / Computer Science coursework with hands-on lab projects and collaborative hackathons.';
+    const universityText = student.university || 'Institute of Engineering & Technology';
+    const degreeText = student.qualification || student.field || 'B.Tech in Computer Science';
+    const roleText = student.desiredRole || student.role || 'Full Stack Developer';
+
+    const generatedResume = `CANDIDATE: ${student.name || 'Student'}
+UNIVERSITY: ${universityText}
+DEGREE: ${degreeText}
+TARGET ROLE: ${roleText}
+
+TECHNICAL SKILLS:
+${skillsList}
+
+PRIOR EXPERIENCE:
+${experienceText}
+
+KEY PROJECTS:
+${projectsList}
+
+PORTFOLIO & LINKS:
+GitHub: ${student.githubUrl || 'github.com/profile'}
+LeetCode: ${student.leetcodeUrl || 'leetcode.com/profile'}`;
+
+    setResumeInput(generatedResume);
+    if (student.desiredRole) setTargetRole(student.desiredRole);
+    setAutoFilledBadge(true);
+    setTimeout(() => setAutoFilledBadge(false), 4000);
+  };
+
   // 2. Roadmap Generator State
   const [roadmapRole, setRoadmapRole] = useState('Full Stack Developer');
+  const [roadmapLevel, setRoadmapLevel] = useState<'beginner' | 'intermediate' | 'advanced'>('intermediate');
+  const [roadmapWeeks, setRoadmapWeeks] = useState<4 | 8>(4);
+  const [roadmapOverview, setRoadmapOverview] = useState('');
   const [roadmapResult, setRoadmapResult] = useState<any[]>([]);
   const [loadingRoadmap, setLoadingRoadmap] = useState(false);
 
   // 3. Interview Prep State
   const [interviewSkill, setInterviewSkill] = useState('Python');
+  const [interviewLevel, setInterviewLevel] = useState<'beginner' | 'intermediate' | 'advanced'>('intermediate');
+  const [interviewRound, setInterviewRound] = useState<'technical' | 'scenario' | 'architecture'>('technical');
   const [interviewQuestions, setInterviewQuestions] = useState<any[]>([]);
   const [loadingInterview, setLoadingInterview] = useState(false);
+  const [masteredQIds, setMasteredQIds] = useState<number[]>([]);
+  const [openHints, setOpenHints] = useState<number[]>([]);
+  const [openAnswers, setOpenAnswers] = useState<number[]>([]);
 
+  // Derived interview skills
+  const availableSkills = useMemo(() => {
+    const fromStudent = student?.skills?.map((s) => s.name) || [];
+    const combined = [...fromStudent, ...POPULAR_SKILLS];
+    return Array.from(new Set(combined));
+  }, [student?.skills]);
+
+  // Handlers
   const handleAnalyzeResume = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!resumeInput.trim()) return;
@@ -51,73 +130,140 @@ export const StudentAITools: React.FC<StudentAIToolsProps> = ({ student, onUpdat
       }
     } catch {
       const fallback = {
-        ats_score: 7.6,
-        verdict: `Candidate demonstrates solid technical aptitude for ${targetRole}. Focus on quantifying impact and adding cloud deployment to reach senior benchmarks.`,
-        section_scores: { technical_depth: 8.0, project_impact: 6.8, clarity_structure: 7.5, role_alignment: 8.0 },
-        strengths: ['Solid foundation in core computer science programming', 'Direct alignment with software design principles'],
-        missing_keywords: ['Docker / Containers', 'CI/CD Automation', 'System Design Patterns', 'SQL Query Optimization'],
-        gap_analysis: `There is a clear gap in demonstrating real-world production scale for ${targetRole}. ATS algorithms prioritize measurable business impact and modern automated deployment tooling.`,
-        recommendations: [
-          'Quantify project outcomes using XYZ format (e.g. reduced response time by 30%).',
-          `Incorporate target role standard keywords: Docker, Redis, CI/CD.`,
-          'Add a dedicated testing section showing unit test coverage.'
+        ats_score: 7.8,
+        verdict: `Candidate demonstrates solid technical aptitude for ${targetRole}. Focus on quantifying project impact and adding cloud deployment to reach senior recruiter benchmarks.`,
+        section_scores: { technical_depth: 8.2, project_impact: 7.0, clarity_structure: 7.8, role_alignment: 8.2 },
+        strengths: [
+          'Solid foundation in core computer science programming and syntax',
+          'Direct alignment with software design principles and hands-on tooling'
         ],
+        missing_keywords: ['Docker / Containers', 'CI/CD Pipelines', 'System Design Patterns', 'SQL Query Optimization'],
+        gap_analysis: `There is a clear gap in demonstrating production-scale experience for ${targetRole}. Recruiter screening systems reward measurable business impact and automated testing.`,
         actionable_steps: [
-          'Quantify project outcomes using XYZ format (e.g. reduced response time by 30%).',
+          'Quantify project outcomes using XYZ format (e.g. reduced query latency by 35%).',
           `Incorporate target role standard keywords: Docker, Redis, CI/CD.`,
-          'Add a dedicated testing section showing unit test coverage.'
+          'Add a dedicated testing section showing automated test coverage.'
         ]
       };
       setResumeResult(fallback);
       setJustSaved(true);
       if (onUpdateResume) {
-        onUpdateResume(7.6, fallback, resumeInput, targetRole);
+        onUpdateResume(7.8, fallback, resumeInput, targetRole);
       }
     } finally {
       setLoadingResume(false);
     }
   };
 
-  const handleGenerateRoadmap = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleGenerateRoadmap = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     setLoadingRoadmap(true);
     try {
-      const res = await studentApi.generateRoadmap(roadmapRole);
-      setRoadmapResult(res.roadmap || []);
+      const currentSkills = student?.skills?.map((s) => s.name).join(', ') || '';
+      const res = await studentApi.generateRoadmap(roadmapRole, roadmapLevel, roadmapWeeks, currentSkills);
+      const list = Array.isArray(res) ? res : (res?.roadmap || []);
+      setRoadmapResult(list);
+      setRoadmapOverview(res?.overview || '');
     } catch {
       setRoadmapResult([
-        { week: 'Week 1', title: 'Foundations & Architecture', topics: ['Core Concepts', 'Data Structures', 'Git Workflow'], project: 'Build a CLI utility' },
-        { week: 'Week 2', title: 'APIs & Databases', topics: ['REST API Design', 'SQL Normalization', 'Authentication'], project: 'Build an authenticated API' },
-        { week: 'Week 3', title: 'Frontend Integration', topics: ['State Management', 'API Fetching', 'UI Components'], project: 'Connect Fullstack Dashboard' },
-        { week: 'Week 4', title: 'Deployment & Testing', topics: ['Unit Testing', 'CI/CD', 'Security Hardening'], project: 'Deploy production live build' },
+        {
+          week: 'Week 1',
+          title: 'Foundations & Architecture',
+          focus: `Core fundamentals, project structure, and git workflows for ${roadmapRole}.`,
+          topics: ['Core Architecture', 'Clean Code Principles', 'Git Flow & Branching', 'Environment Configuration'],
+          project: `Build a clean starter project architecture demonstrating modular design for ${roadmapRole}.`,
+          milestone: 'Architecture & Foundations Verified'
+        },
+        {
+          week: 'Week 2',
+          title: 'Data Modeling & API Services',
+          focus: 'Designing resilient data schemas and authenticated API contracts.',
+          topics: ['Relational Schemas', 'REST / JSON API Design', 'Authentication & JWT Middleware', 'Input Validation'],
+          project: 'Build an authenticated multi-role CRUD service with database transactions.',
+          milestone: 'Data & Service Architecture'
+        },
+        {
+          week: 'Week 3',
+          title: 'Integration & State Management',
+          focus: 'Connecting frontend clients with real-time responsive data.',
+          topics: ['Component Hierarchy', 'Asynchronous API Fetching', 'Global & Local State', 'Responsive Mobile-First UI'],
+          project: 'Connect full-stack client portal with live API endpoints and loading states.',
+          milestone: 'Full Stack Integration'
+        },
+        {
+          week: 'Week 4',
+          title: 'Testing, Deployment & Production Polish',
+          focus: 'Hardening the application for production scale with automated CI/CD.',
+          topics: ['Unit & Integration Tests', 'Containerization with Docker', 'CI/CD Pipelines', 'Performance Profiling'],
+          project: `Deploy a production-ready portfolio project showcasing all skills required of an industry ${roadmapRole}.`,
+          milestone: `Certified ${roadmapRole} Ready`
+        }
       ]);
+      setRoadmapOverview(`A dedicated ${roadmapWeeks}-week curriculum calibrated for ${roadmapRole} at the ${roadmapLevel} level.`);
     } finally {
       setLoadingRoadmap(false);
     }
   };
 
-  const handleFetchInterview = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleFetchInterview = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     setLoadingInterview(true);
+    setMasteredQIds([]);
+    setOpenHints([]);
+    setOpenAnswers([]);
     try {
-      const res = await studentApi.getInterviewQuestions(interviewSkill);
-      setInterviewQuestions(res.questions || []);
+      const res = await studentApi.getInterviewQuestions(interviewSkill, interviewLevel, interviewRound);
+      const list = Array.isArray(res) ? res : (res?.questions || []);
+      setInterviewQuestions(list);
     } catch {
       setInterviewQuestions([
-        { question: `How do you manage error handling and edge cases in ${interviewSkill}?`, hint: 'Mention structured error responses and input validation.', sample_answer: 'Validate all inputs at the boundary, use try-catch blocks to prevent crashes, and log errors.' },
-        { question: `What is a major performance bottleneck you might encounter in ${interviewSkill}?`, hint: 'Think of caching and database indexing.', sample_answer: 'Common bottlenecks include repeated queries and unindexed lookups; resolved by caching and query optimization.' },
-        { question: `Explain synchronous vs asynchronous execution in ${interviewSkill}.`, hint: 'Think of blocking vs non-blocking.', sample_answer: 'Synchronous execution waits for each task to finish; asynchronous execution allows other code to run while waiting for I/O.' },
+        {
+          question: `How do you manage error handling and edge cases in ${interviewSkill}?`,
+          level: interviewLevel,
+          category: 'Language Mechanics & Reliability',
+          hint: 'Mention structured error responses, boundary validation, and avoiding silent failures.',
+          sample_answer: 'Validate all inputs at the API or function boundary, use structured try-catch/except blocks to prevent unhandled crashes, and log errors with contextual stack traces.',
+          follow_up: `How does ${interviewSkill} handle concurrency or thread safety when errors happen during asynchronous operations?`
+        },
+        {
+          question: `What is a major performance bottleneck you might encounter when scaling ${interviewSkill}?`,
+          level: interviewLevel,
+          category: 'Performance & Optimization',
+          hint: 'Think of memory allocation, unindexed queries, or blocking operations on the main loop.',
+          sample_answer: 'Common bottlenecks include memory leaks from circular references or unclosed handles, repeated database lookups that lack indexing, and blocking I/O calls.',
+          follow_up: 'What profiling tools or telemetry metrics would you inspect first to confirm this bottleneck?'
+        },
+        {
+          question: `Explain how state and memory management work in ${interviewSkill}.`,
+          level: interviewLevel,
+          category: 'Memory & State Architecture',
+          hint: 'Differentiate between heap vs stack, garbage collection cycles, or immutable states.',
+          sample_answer: 'Memory is allocated dynamically on the heap while function frames use stack memory. Automatic garbage collection detects unreachable references, while predictable immutable updates avoid shared state mutation.',
+          follow_up: 'What is the trade-off between immutable data structures and garbage collection overhead?'
+        }
       ]);
     } finally {
       setLoadingInterview(false);
     }
   };
 
+  const toggleMastered = (idx: number) => {
+    setMasteredQIds((prev) => (prev.includes(idx) ? prev.filter((i) => i !== idx) : [...prev, idx]));
+  };
+
+  const toggleHint = (idx: number) => {
+    setOpenHints((prev) => (prev.includes(idx) ? prev.filter((i) => i !== idx) : [...prev, idx]));
+  };
+
+  const toggleAnswer = (idx: number) => {
+    setOpenAnswers((prev) => (prev.includes(idx) ? prev.filter((i) => i !== idx) : [...prev, idx]));
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader
-        title="AI Tools Hub"
-        desc="Interactive Gemini-powered tools to accelerate your skill readiness and career growth."
+        title="AI Career & Prep Engine"
+        desc="Interactive Gemini-powered tools calibrated to your profile, chosen domain, and career seniority level."
       />
 
       {/* Tool Selector Tabs */}
@@ -125,70 +271,129 @@ export const StudentAITools: React.FC<StudentAIToolsProps> = ({ student, onUpdat
         <button
           type="button"
           onClick={() => setActiveTool('resume')}
-          className={`px-4 py-2 rounded-xl text-xs font-semibold transition ${
+          className={`px-4 py-2.5 rounded-xl text-xs font-semibold transition flex items-center gap-2 ${
             activeTool === 'resume'
-              ? 'bg-sagedeep text-white'
+              ? 'bg-sagedeep text-white shadow-sm'
               : 'bg-black/5 text-[var(--text-muted)] hover:bg-black/10'
           }`}
         >
-          AI Resume & ATS Analyzer
+          <span>📄</span>
+          <span>AI Resume & ATS Analyzer</span>
         </button>
         <button
           type="button"
           onClick={() => setActiveTool('roadmap')}
-          className={`px-4 py-2 rounded-xl text-xs font-semibold transition ${
+          className={`px-4 py-2.5 rounded-xl text-xs font-semibold transition flex items-center gap-2 ${
             activeTool === 'roadmap'
-              ? 'bg-sagedeep text-white'
+              ? 'bg-sagedeep text-white shadow-sm'
               : 'bg-black/5 text-[var(--text-muted)] hover:bg-black/10'
           }`}
         >
-          AI Career Roadmap Builder
+          <span>🗺️</span>
+          <span>AI Career Roadmap Builder</span>
         </button>
         <button
           type="button"
           onClick={() => setActiveTool('interview')}
-          className={`px-4 py-2 rounded-xl text-xs font-semibold transition ${
+          className={`px-4 py-2.5 rounded-xl text-xs font-semibold transition flex items-center gap-2 ${
             activeTool === 'interview'
-              ? 'bg-sagedeep text-white'
+              ? 'bg-sagedeep text-white shadow-sm'
               : 'bg-black/5 text-[var(--text-muted)] hover:bg-black/10'
           }`}
         >
-          AI Mock Interview Coach
+          <span>🎙️</span>
+          <span>AI Mock Interview Coach</span>
         </button>
       </div>
 
       {/* 1. RESUME ANALYZER */}
       {activeTool === 'resume' && (
         <div className="space-y-5">
-          <Card className="p-5">
-            <form onSubmit={handleAnalyzeResume} className="space-y-4">
+          <Card className="p-5 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[var(--border)] pb-3">
               <div>
-                <label className="text-xs font-semibold text-[var(--text-muted)]">Target Role</label>
+                <h3 className="font-display font-semibold text-base text-[#2C3524]">ATS Resume Audit & Gap Analysis</h3>
+                <p className="text-xs text-[var(--text-muted)]">
+                  Compare your credentials directly against modern tech ATS filters and recruiter standards.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                {autoFilledBadge && (
+                  <span className="text-xs text-emerald-700 font-semibold bg-emerald-50 border border-emerald-200 px-2 py-1 rounded-lg animate-pulse">
+                    ✓ Profile Loaded!
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={handleAutoFillResume}
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-sagedeep/10 text-sagedeep hover:bg-sagedeep/20 transition flex items-center gap-1.5"
+                  title="Auto-populate from your profile information, skills, and projects"
+                >
+                  <span>⚡</span>
+                  <span>Auto-Fill From My Profile</span>
+                </button>
+              </div>
+            </div>
+
+            <form onSubmit={handleAnalyzeResume} className="space-y-4">
+              {/* Target Role Selector & Quick Chips */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-semibold text-[var(--text-muted)]">Target Engineering Role</label>
+                  <span className="text-[11px] text-[var(--text-muted)]">Click a quick chip or type below</span>
+                </div>
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {RESUME_ROLE_OPTIONS.map((r) => (
+                    <button
+                      key={r}
+                      type="button"
+                      onClick={() => setTargetRole(r)}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition ${
+                        targetRole.toLowerCase() === r.toLowerCase()
+                          ? 'bg-sagedeep text-white'
+                          : 'bg-black/5 hover:bg-black/10 text-[#2C3524]'
+                      }`}
+                    >
+                      {r}
+                    </button>
+                  ))}
+                </div>
                 <input
                   value={targetRole}
                   onChange={(e) => setTargetRole(e.target.value)}
-                  className="w-full mt-1 rounded-xl border border-[var(--border)] px-3.5 py-2 text-sm focus-ring bg-white text-black"
+                  className="w-full rounded-xl border border-[var(--border)] px-3.5 py-2 text-sm focus-ring bg-white text-black"
                   placeholder="e.g. Backend Engineer, Full Stack Developer"
                 />
               </div>
 
+              {/* Resume Text Content */}
               <div>
-                <label className="text-xs font-semibold text-[var(--text-muted)]">
-                  Paste Resume Content or Project Skills
+                <label className="text-xs font-semibold text-[var(--text-muted)] flex items-center justify-between">
+                  <span>Resume Content, Projects & Technical Summary</span>
+                  <span className="text-[11px] font-normal text-[var(--text-muted)]">
+                    {resumeInput.length} characters
+                  </span>
                 </label>
                 <textarea
-                  rows={4}
+                  rows={5}
                   required
                   value={resumeInput}
                   onChange={(e) => setResumeInput(e.target.value)}
-                  className="w-full mt-1 rounded-xl border border-[var(--border)] p-3 text-sm focus-ring font-mono bg-white text-black"
-                  placeholder="Paste your resume summary, project descriptions, and technical skills here..."
+                  className="w-full mt-1 rounded-xl border border-[var(--border)] p-3 text-sm focus-ring font-mono bg-white text-black leading-relaxed"
+                  placeholder="Paste your resume, project descriptions, and technical skills here or click 'Auto-Fill From My Profile' above..."
                 />
               </div>
 
-              <Button variant="primary" type="submit" disabled={loadingResume}>
-                {loadingResume ? 'Analyzing with Gemini AI…' : 'Analyze Resume & Compute ATS Score'}
-              </Button>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+                <Button variant="primary" type="submit" disabled={loadingResume}>
+                  {loadingResume ? 'Analyzing with Gemini AI…' : 'Analyze Resume & Compute ATS Score'}
+                </Button>
+                {justSaved && (
+                  <div className="text-xs text-emerald-700 font-semibold flex items-center gap-1.5">
+                    <span>✓</span> Synced to Student Profile & Dashboard
+                  </div>
+                )}
+              </div>
             </form>
           </Card>
 
@@ -281,7 +486,7 @@ export const StudentAITools: React.FC<StudentAIToolsProps> = ({ student, onUpdat
                     ))}
                   </div>
                   <p className="text-[11px] text-rose-800 mt-2 leading-tight">
-                    Recruiter screening filters look for these terms when scanning applications for {targetRole}.
+                    Recruiter screening algorithms prioritize candidates with demonstrable proficiency in these keywords.
                   </p>
                 </div>
               </div>
@@ -324,44 +529,177 @@ export const StudentAITools: React.FC<StudentAIToolsProps> = ({ student, onUpdat
       {/* 2. ROADMAP BUILDER */}
       {activeTool === 'roadmap' && (
         <div className="space-y-5">
-          <Card className="p-5">
-            <form onSubmit={handleGenerateRoadmap} className="flex flex-col sm:flex-row gap-3 items-end">
-              <div className="flex-1 w-full">
-                <label className="text-xs font-semibold text-[var(--text-muted)]">Target Career Role</label>
+          <Card className="p-5 space-y-4">
+            <div>
+              <h3 className="font-display font-semibold text-base text-[#2C3524]">Domain-Tailored Learning Curriculum</h3>
+              <p className="text-xs text-[var(--text-muted)]">
+                Generate distinct, role-specific career roadmaps calibrated to your current seniority and target timeline.
+              </p>
+            </div>
+
+            <form onSubmit={handleGenerateRoadmap} className="space-y-4">
+              {/* Quick Track Chips */}
+              <div>
+                <label className="text-xs font-semibold text-[var(--text-muted)] mb-1 block">
+                  Select Specialization Track
+                </label>
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {ROADMAP_ROLE_OPTIONS.map((r) => (
+                    <button
+                      key={r}
+                      type="button"
+                      onClick={() => setRoadmapRole(r)}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition ${
+                        roadmapRole.toLowerCase() === r.toLowerCase()
+                          ? 'bg-sagedeep text-white'
+                          : 'bg-black/5 hover:bg-black/10 text-[#2C3524]'
+                      }`}
+                    >
+                      {r}
+                    </button>
+                  ))}
+                </div>
                 <input
                   value={roadmapRole}
                   onChange={(e) => setRoadmapRole(e.target.value)}
-                  className="w-full mt-1 rounded-xl border border-[var(--border)] px-3.5 py-2.5 text-sm focus-ring bg-white text-black"
-                  placeholder="e.g. Full Stack Developer, AI/ML Specialist"
+                  className="w-full rounded-xl border border-[var(--border)] px-3.5 py-2 text-sm focus-ring bg-white text-black"
+                  placeholder="e.g. AI/ML Specialist, Full Stack Developer, Cybersecurity Analyst"
                 />
               </div>
-              <Button variant="primary" type="submit" disabled={loadingRoadmap}>
-                {loadingRoadmap ? 'Building Roadmap…' : 'Generate 4-Week Plan'}
-              </Button>
+
+              {/* Level & Timeline Controls */}
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-semibold text-[var(--text-muted)] mb-1.5 block">
+                    Experience / Seniority Level
+                  </label>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {[
+                      { id: 'beginner', label: 'Beginner', desc: 'Foundations' },
+                      { id: 'intermediate', label: 'Intermediate', desc: 'Production' },
+                      { id: 'advanced', label: 'Advanced', desc: 'Scale & Arch' },
+                    ].map((lvl) => (
+                      <button
+                        key={lvl.id}
+                        type="button"
+                        onClick={() => setRoadmapLevel(lvl.id as any)}
+                        className={`p-2 rounded-xl text-center border transition ${
+                          roadmapLevel === lvl.id
+                            ? 'border-sagedeep bg-sagedeep/10 text-sagedeep font-bold'
+                            : 'border-[var(--border)] bg-white hover:bg-black/5 text-[var(--text-muted)]'
+                        }`}
+                      >
+                        <div className="text-xs">{lvl.label}</div>
+                        <div className="text-[10px] font-normal opacity-80">{lvl.desc}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-[var(--text-muted)] mb-1.5 block">
+                    Roadmap Duration
+                  </label>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {[
+                      { weeks: 4, label: '4 Weeks', desc: 'Accelerated Sprint' },
+                      { weeks: 8, label: '8 Weeks', desc: 'Deep Dive Mastery' },
+                    ].map((w) => (
+                      <button
+                        key={w.weeks}
+                        type="button"
+                        onClick={() => setRoadmapWeeks(w.weeks as 4 | 8)}
+                        className={`p-2 rounded-xl text-center border transition ${
+                          roadmapWeeks === w.weeks
+                            ? 'border-sagedeep bg-sagedeep/10 text-sagedeep font-bold'
+                            : 'border-[var(--border)] bg-white hover:bg-black/5 text-[var(--text-muted)]'
+                        }`}
+                      >
+                        <div className="text-xs">{w.label}</div>
+                        <div className="text-[10px] font-normal opacity-80">{w.desc}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <Button variant="primary" type="submit" disabled={loadingRoadmap}>
+                  {loadingRoadmap ? 'Building Specialized Roadmap…' : `Generate ${roadmapWeeks}-Week ${roadmapRole} Roadmap`}
+                </Button>
+              </div>
             </form>
           </Card>
 
+          {/* Roadmap Results */}
           {roadmapResult.length > 0 && (
-            <div className="grid sm:grid-cols-2 gap-4">
-              {roadmapResult.map((step, idx) => (
-                <Card key={idx} className="p-5 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Tag tone="blue">{step.week}</Tag>
-                    <span className="text-xs font-semibold text-sagedeep">{step.title}</span>
+            <div className="space-y-4">
+              <div className="p-4 rounded-xl bg-sagedeep/5 border border-sagedeep/20 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-display font-semibold text-base text-[#2C3524]">
+                      {roadmapRole} Curriculum
+                    </span>
+                    <Tag tone="sage">{roadmapLevel.toUpperCase()}</Tag>
+                    <Tag tone="blue">{roadmapWeeks} WEEKS</Tag>
                   </div>
-                  <div className="text-xs text-[var(--text-muted)]">
-                    <div className="font-semibold mb-1">Topics:</div>
-                    <ul className="list-disc list-inside space-y-0.5">
-                      {step.topics?.map((t: string, i: number) => (
-                        <li key={i}>{t}</li>
-                      ))}
-                    </ul>
-                  </div>
-                  <div className="p-2.5 rounded-xl bg-sage/10 text-xs text-sagedeep font-medium mt-2">
-                    🎯 <strong>Milestone:</strong> {step.project}
-                  </div>
-                </Card>
-              ))}
+                  {roadmapOverview && (
+                    <p className="text-xs text-[var(--text-muted)] mt-1">{roadmapOverview}</p>
+                  )}
+                </div>
+                <div className="text-xs text-[var(--text-muted)] shrink-0">
+                  {roadmapResult.length} progressive modules
+                </div>
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-4">
+                {roadmapResult.map((step, idx) => (
+                  <Card key={idx} className="p-5 space-y-3 flex flex-col justify-between border-[var(--border)] hover:border-sagedeep/40 transition">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <Tag tone="blue">{step.week || `Week ${idx + 1}`}</Tag>
+                        <span className="text-xs font-semibold text-sagedeep text-right">
+                          {step.title || step.focus || 'Specialized Module'}
+                        </span>
+                      </div>
+
+                      {step.focus && (
+                        <div className="text-xs text-[#2C3524] font-medium leading-relaxed bg-black/5 p-2 rounded-lg">
+                          🎯 <strong>Core Focus:</strong> {step.focus}
+                        </div>
+                      )}
+
+                      {step.topics && step.topics.length > 0 && (
+                        <div className="text-xs text-[var(--text-muted)] pt-1">
+                          <div className="font-semibold text-black mb-1">Key Curriculum Topics:</div>
+                          <ul className="space-y-1">
+                            {step.topics.map((t: string, i: number) => (
+                              <li key={i} className="flex items-start gap-1.5 leading-snug">
+                                <span className="text-sagedeep font-bold">•</span>
+                                <span>{t}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="space-y-2 pt-2 border-t border-[var(--border)]">
+                      {step.project && (
+                        <div className="text-xs text-[#2C3524] leading-relaxed">
+                          <strong className="text-sagedeep">🚀 Hands-on Capstone:</strong> {step.project}
+                        </div>
+                      )}
+                      {step.milestone && (
+                        <div className="text-[11px] font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200/80 px-2.5 py-1 rounded-lg flex items-center gap-1.5">
+                          <span>🏆</span>
+                          <span>Milestone: {step.milestone}</span>
+                        </div>
+                      )}
+                    </div>
+                  </Card>
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -370,48 +708,244 @@ export const StudentAITools: React.FC<StudentAIToolsProps> = ({ student, onUpdat
       {/* 3. INTERVIEW COACH */}
       {activeTool === 'interview' && (
         <div className="space-y-5">
-          <Card className="p-5">
-            <form onSubmit={handleFetchInterview} className="flex flex-col sm:flex-row gap-3 items-end">
-              <div className="flex-1 w-full">
-                <label className="text-xs font-semibold text-[var(--text-muted)]">Technical Skill to Practice</label>
+          <Card className="p-5 space-y-4">
+            <div>
+              <h3 className="font-display font-semibold text-base text-[#2C3524]">Targeted Technical Interview Simulator</h3>
+              <p className="text-xs text-[var(--text-muted)]">
+                Master realistic interview loops tailored to specific technical domains, complete with guiding hints, model answers, and follow-up probes.
+              </p>
+            </div>
+
+            <form onSubmit={handleFetchInterview} className="space-y-4">
+              {/* Quick Skill Selector */}
+              <div>
+                <label className="text-xs font-semibold text-[var(--text-muted)] mb-1 block">
+                  Select Technical Skill
+                </label>
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {availableSkills.map((sk) => (
+                    <button
+                      key={sk}
+                      type="button"
+                      onClick={() => setInterviewSkill(sk)}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition ${
+                        interviewSkill.toLowerCase() === sk.toLowerCase()
+                          ? 'bg-sagedeep text-white'
+                          : 'bg-black/5 hover:bg-black/10 text-[#2C3524]'
+                      }`}
+                    >
+                      {sk}
+                    </button>
+                  ))}
+                </div>
                 <input
                   value={interviewSkill}
                   onChange={(e) => setInterviewSkill(e.target.value)}
-                  className="w-full mt-1 rounded-xl border border-[var(--border)] px-3.5 py-2.5 text-sm focus-ring bg-white text-black"
-                  placeholder="e.g. Python, React, SQL, Linux"
+                  className="w-full rounded-xl border border-[var(--border)] px-3.5 py-2 text-sm focus-ring bg-white text-black"
+                  placeholder="e.g. Python, React, SQL, Docker, Go"
                 />
               </div>
-              <Button variant="primary" type="submit" disabled={loadingInterview}>
-                {loadingInterview ? 'Generating Questions…' : 'Get Interview Questions'}
-              </Button>
+
+              {/* Difficulty & Round Type Selector */}
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-semibold text-[var(--text-muted)] mb-1.5 block">
+                    Difficulty Calibration
+                  </label>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {[
+                      { id: 'beginner', label: 'Beginner', desc: 'Core Syntax' },
+                      { id: 'intermediate', label: 'Intermediate', desc: 'Production' },
+                      { id: 'advanced', label: 'Advanced', desc: 'Internals & GIL' },
+                    ].map((lvl) => (
+                      <button
+                        key={lvl.id}
+                        type="button"
+                        onClick={() => setInterviewLevel(lvl.id as any)}
+                        className={`p-2 rounded-xl text-center border transition ${
+                          interviewLevel === lvl.id
+                            ? 'border-sagedeep bg-sagedeep/10 text-sagedeep font-bold'
+                            : 'border-[var(--border)] bg-white hover:bg-black/5 text-[var(--text-muted)]'
+                        }`}
+                      >
+                        <div className="text-xs">{lvl.label}</div>
+                        <div className="text-[10px] font-normal opacity-80">{lvl.desc}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-[var(--text-muted)] mb-1.5 block">
+                    Interview Round Format
+                  </label>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {[
+                      { id: 'technical', label: 'Technical', desc: 'Deep Dive' },
+                      { id: 'scenario', label: 'Scenario', desc: 'Real-world Bug' },
+                      { id: 'architecture', label: 'Architecture', desc: 'System Design' },
+                    ].map((rnd) => (
+                      <button
+                        key={rnd.id}
+                        type="button"
+                        onClick={() => setInterviewRound(rnd.id as any)}
+                        className={`p-2 rounded-xl text-center border transition ${
+                          interviewRound === rnd.id
+                            ? 'border-sagedeep bg-sagedeep/10 text-sagedeep font-bold'
+                            : 'border-[var(--border)] bg-white hover:bg-black/5 text-[var(--text-muted)]'
+                        }`}
+                      >
+                        <div className="text-xs">{rnd.label}</div>
+                        <div className="text-[10px] font-normal opacity-80">{rnd.desc}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <Button variant="primary" type="submit" disabled={loadingInterview}>
+                  {loadingInterview ? 'Synthesizing Interview Loop…' : `Get ${interviewLevel.toUpperCase()} ${interviewSkill} Questions`}
+                </Button>
+              </div>
             </form>
           </Card>
 
+          {/* Interview Questions Presentation */}
           {interviewQuestions.length > 0 && (
             <div className="space-y-4">
-              {interviewQuestions.map((q, idx) => (
-                <Card key={idx} className="p-5 space-y-3">
-                  <div className="flex items-start gap-2">
-                    <span className="w-6 h-6 rounded-full bg-sagedeep text-white flex items-center justify-center text-xs font-bold shrink-0">
-                      Q{idx + 1}
-                    </span>
-                    <div className="font-semibold text-sm">{q.question}</div>
+              {/* Practice Tracker Status */}
+              <div className="p-4 rounded-xl bg-white border border-[var(--border)] flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+                <div>
+                  <div className="font-display font-semibold text-base text-[#2C3524]">
+                    Mock Interview Session: {interviewSkill}
                   </div>
-
-                  <div className="text-xs text-[var(--text-muted)] bg-black/5 p-3 rounded-xl">
-                    <span className="font-semibold text-black">💡 Hint: </span>{q.hint}
+                  <div className="text-xs text-[var(--text-muted)]">
+                    Level: <span className="font-semibold text-black capitalize">{interviewLevel}</span> • Round: <span className="font-semibold text-black capitalize">{interviewRound}</span>
                   </div>
+                </div>
 
-                  <details className="text-xs text-[var(--text-muted)] cursor-pointer">
-                    <summary className="font-semibold text-sagedeep hover:underline">
-                      Reveal Model Answer
-                    </summary>
-                    <p className="mt-2 pl-3 border-l-2 border-sagedeep text-black leading-relaxed">
-                      {q.sample_answer}
-                    </p>
-                  </details>
-                </Card>
-              ))}
+                <div className="sm:w-60 space-y-1">
+                  <div className="flex items-center justify-between text-xs font-semibold">
+                    <span>Practice Mastery:</span>
+                    <span className="text-sagedeep">{masteredQIds.length} / {interviewQuestions.length}</span>
+                  </div>
+                  <ProgressBar
+                    value={interviewQuestions.length ? (masteredQIds.length / interviewQuestions.length) * 100 : 0}
+                    colorClass="bg-emerald-600"
+                  />
+                </div>
+              </div>
+
+              {/* Questions List */}
+              <div className="space-y-4">
+                {interviewQuestions.map((q, idx) => {
+                  const isMastered = masteredQIds.includes(idx);
+                  const isHintOpen = openHints.includes(idx);
+                  const isAnswerOpen = openAnswers.includes(idx);
+
+                  return (
+                    <Card
+                      key={idx}
+                      className={`p-5 space-y-3.5 transition border ${
+                        isMastered ? 'border-emerald-300 bg-emerald-50/20' : 'border-[var(--border)]'
+                      }`}
+                    >
+                      {/* Header */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[var(--border)] pb-2.5">
+                        <div className="flex items-center gap-2">
+                          <span className="w-6 h-6 rounded-full bg-sagedeep text-white flex items-center justify-center text-xs font-bold shrink-0">
+                            {idx + 1}
+                          </span>
+                          {q.category && <Tag tone="sage">{q.category}</Tag>}
+                          <span className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">
+                            {q.level || interviewLevel}
+                          </span>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => toggleMastered(idx)}
+                          className={`px-3 py-1 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 self-start sm:self-auto ${
+                            isMastered
+                              ? 'bg-emerald-600 text-white shadow-sm'
+                              : 'bg-black/5 text-[var(--text-muted)] hover:bg-black/10'
+                          }`}
+                        >
+                          <span>{isMastered ? '✓' : '○'}</span>
+                          <span>{isMastered ? 'Mastered' : 'Mark as Mastered'}</span>
+                        </button>
+                      </div>
+
+                      {/* Question Text */}
+                      <div className="font-semibold text-sm sm:text-base text-[#2C3524] leading-relaxed">
+                        {q.question}
+                      </div>
+
+                      {/* Action Controls: Hint & Model Answer */}
+                      <div className="flex flex-wrap items-center gap-2 pt-1">
+                        {q.hint && (
+                          <button
+                            type="button"
+                            onClick={() => toggleHint(idx)}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${
+                              isHintOpen
+                                ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                                : 'bg-black/5 text-[#2C3524] hover:bg-black/10'
+                            }`}
+                          >
+                            <span>💡</span>
+                            <span>{isHintOpen ? 'Hide Hint' : 'Show Hint'}</span>
+                          </button>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={() => toggleAnswer(idx)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${
+                            isAnswerOpen
+                              ? 'bg-sagedeep text-white'
+                              : 'bg-sagedeep/10 text-sagedeep hover:bg-sagedeep/20'
+                          }`}
+                        >
+                          <span>📖</span>
+                          <span>{isAnswerOpen ? 'Hide Model Answer' : 'Reveal Model Answer'}</span>
+                        </button>
+                      </div>
+
+                      {/* Guiding Hint Collapsible */}
+                      {isHintOpen && q.hint && (
+                        <div className="text-xs text-amber-950 bg-amber-50 border border-amber-200 p-3 rounded-xl leading-relaxed">
+                          <strong className="text-amber-900">💡 Interviewer Hint:</strong> {q.hint}
+                        </div>
+                      )}
+
+                      {/* Model Answer Collapsible */}
+                      {isAnswerOpen && (
+                        <div className="text-xs bg-sagedeep/5 border border-sagedeep/20 p-4 rounded-xl space-y-2">
+                          <div className="font-semibold text-sagedeep flex items-center gap-1.5">
+                            <span>🎓</span>
+                            <span>Industry Benchmark Model Answer:</span>
+                          </div>
+                          <p className="text-black leading-relaxed font-sans whitespace-pre-line">
+                            {q.sample_answer || q.answer}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Follow-up Probe */}
+                      {q.follow_up && (
+                        <div className="text-xs text-blue-950 bg-blue-50/70 border border-blue-200/80 p-3 rounded-xl leading-relaxed flex items-start gap-2">
+                          <span className="text-blue-600 font-bold shrink-0">🎯</span>
+                          <div>
+                            <strong className="text-blue-900">Follow-up Probe:</strong> "{q.follow_up}"
+                          </div>
+                        </div>
+                      )}
+                    </Card>
+                  );
+                })}
+              </div>
             </div>
           )}
         </div>

@@ -264,13 +264,43 @@ def ai_resume_analyzer():
 def ai_roadmap_generator():
     data = request.get_json() or {}
     target_role = data.get('target_role', 'Full Stack Developer').strip()
-    roadmap = gemini_service.generate_career_roadmap(target_role)
-    return jsonify({'target_role': target_role, 'roadmap': roadmap}), 200
+    level = data.get('level', 'intermediate').strip()
+    try:
+        duration_weeks = int(data.get('duration_weeks', 4))
+    except (ValueError, TypeError):
+        duration_weeks = 4
+    current_skills = data.get('current_skills', '').strip()
+
+    roadmap = gemini_service.generate_career_roadmap(
+        target_role=target_role,
+        level=level,
+        duration_weeks=duration_weeks,
+        current_skills=current_skills
+    )
+    return jsonify({
+        'target_role': target_role,
+        'level': level,
+        'duration_weeks': len(roadmap),
+        'overview': f"Personalized {len(roadmap)}-week curriculum tailored for {target_role} ({level.capitalize()} track).",
+        'roadmap': roadmap
+    }), 200
 
 @student_bp.route('/ai/interview-prep', methods=['POST'])
 @role_required('student')
 def ai_interview_prep():
     data = request.get_json() or {}
     skill = data.get('skill', 'Python').strip()
-    questions = gemini_service.generate_mock_interview(skill)
-    return jsonify({'skill': skill, 'questions': questions}), 200
+    level = data.get('level', 'intermediate').strip()
+    round_type = data.get('round_type', 'technical').strip()
+
+    questions = gemini_service.generate_mock_interview(
+        skill_name=skill,
+        level=level,
+        round_type=round_type
+    )
+    return jsonify({
+        'skill': skill,
+        'level': level,
+        'round_type': round_type,
+        'questions': questions
+    }), 200
