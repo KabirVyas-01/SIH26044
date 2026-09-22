@@ -169,7 +169,12 @@ def view_my_applications():
 @role_required('student')
 def get_skill_questions(skill_name):
     """Fetches cached or AI-generated questions (with correct answer hidden so students can't cheat!)."""
-    questions = gemini_service.get_or_generate_questions(skill_name, count=5)
+    level = request.args.get('level', 'intermediate').strip().lower()
+    try:
+        count = int(request.args.get('count', 10))
+    except (ValueError, TypeError):
+        count = 10
+    questions = gemini_service.get_or_generate_questions(skill_name, count=count, level=level)
     
     sanitized = []
     for q in questions:
@@ -179,7 +184,7 @@ def get_skill_questions(skill_name):
             'question_text': q['question_text'],
             'options': q['options']
         })
-    return jsonify({'skill': skill_name, 'questions': sanitized}), 200
+    return jsonify({'skill': skill_name, 'level': level, 'questions': sanitized}), 200
 
 @student_bp.route('/assessments/<skill_name>/submit', methods=['POST'])
 @role_required('student')
@@ -188,8 +193,9 @@ def submit_skill_test(skill_name):
     student_id = session['user_id']
     data = request.get_json() or {}
     answers = data.get('answers', {})
+    total_questions = data.get('total_questions', 10)
 
-    result = gemini_service.grade_assessment(student_id, skill_name, answers)
+    result = gemini_service.grade_assessment(student_id, skill_name, answers, total_questions=total_questions)
     return jsonify({'message': f"Assessment for {skill_name} completed!", 'result': result}), 200
 
 @student_bp.route('/postings/<int:posting_id>/fit-score', methods=['GET'])

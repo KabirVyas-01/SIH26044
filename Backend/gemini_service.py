@@ -45,29 +45,21 @@ class GeminiService:
     # =========================================================================
     # 1. MCQ ASSESSMENT GENERATOR
     # =========================================================================
-    def get_or_generate_questions(self, skill_name: str, count: int = 5):
-        """Query test_questions cache. If missing, generate via Gemini, cache, and return."""
+    # =========================================================================
+    # 1. MCQ ASSESSMENT GENERATOR (LEVEL-SPECIFIC, 10 QUESTIONS)
+    # =========================================================================
+    def get_or_generate_questions(self, skill_name: str, count: int = 10, level: str = 'intermediate'):
+        """Generates level-appropriate technical MCQs via Gemini or comprehensive offline question bank."""
         normalized_skill = skill_name.strip().title()
-        
-        conn = get_db()
-        cursor = conn.cursor()
-        cursor.execute(
-            "SELECT id, skill_name, question_text, options, correct_answer FROM test_questions WHERE LOWER(skill_name) = LOWER(?)",
-            (normalized_skill,)
-        )
-        cached_rows = cursor.fetchall()
-        if cached_rows and len(cached_rows) >= count:
-            conn.close()
-            questions = []
-            for r in cached_rows[:count]:
-                d = row_to_dict(r)
-                d['options'] = json.loads(d['options'])
-                questions.append(d)
-            return questions
+        normalized_level = level.strip().lower() if level else 'intermediate'
+        if normalized_level not in ('beginner', 'intermediate', 'advanced'):
+            normalized_level = 'intermediate'
 
+        # 1. Try Gemini AI with explicit level and count
         prompt = (
-            f"Generate {count} multiple-choice test questions for technical skill: '{normalized_skill}'. "
-            f"Return ONLY a valid JSON list of objects with keys: "
+            f"Generate exactly {count} multiple-choice test questions for skill '{normalized_skill}' at '{normalized_level.upper()}' difficulty level. "
+            f"Target practical engineering knowledge and code reasoning suitable for a {normalized_level} university student. "
+            f"Return ONLY a valid JSON list of {count} objects with keys: "
             f"'question_text', 'options' (object with keys 'A', 'B', 'C', 'D'), and 'correct_answer' ('A', 'B', 'C', or 'D')."
         )
         raw_ai = self._call_gemini(prompt)
@@ -75,36 +67,30 @@ class GeminiService:
         if raw_ai:
             try:
                 clean = raw_ai.replace("```json", "").replace("```", "").strip()
-                questions = json.loads(clean)
+                parsed = json.loads(clean)
+                if isinstance(parsed, list) and len(parsed) >= 5:
+                    questions = parsed
             except Exception:
                 questions = []
 
-        # Smart Offline Fallback (if no API key or network error)
+        # 2. Rich Offline Level-Specific Bank if AI is offline
         if not questions:
-            questions = [
-                {
-                    "question_text": f"Which of the following is a primary foundational concept in {normalized_skill}?",
-                    "options": {"A": "Data Structures & Logic", "B": "CSS Animations", "C": "Photoshop Filters", "D": "Audio Editing"},
-                    "correct_answer": "A"
-                },
-                {
-                    "question_text": f"What is a standard best practice when deploying code using {normalized_skill}?",
-                    "options": {"A": "Hardcoding secrets", "B": "Writing clean modular functions and tests", "C": "Deleting logs", "D": "Skipping error handling"},
-                    "correct_answer": "B"
-                }
-            ]
+            questions = self._get_offline_bank(normalized_skill, normalized_level)
 
+        conn = get_db()
+        cursor = conn.cursor()
         saved_questions = []
         for q in questions[:count]:
             opts_json = json.dumps(q.get("options", {}))
             cursor.execute(
                 "INSERT INTO test_questions (skill_name, question_text, options, correct_answer) VALUES (?, ?, ?, ?)",
-                (normalized_skill, q.get("question_text"), opts_json, q.get("correct_answer", "A"))
+                (f"{normalized_skill} ({normalized_level.title()})", q.get("question_text"), opts_json, q.get("correct_answer", "A"))
             )
             q_id = cursor.lastrowid
             saved_questions.append({
                 "id": q_id,
                 "skill_name": normalized_skill,
+                "difficulty": normalized_level,
                 "question_text": q.get("question_text"),
                 "options": q.get("options"),
                 "correct_answer": q.get("correct_answer", "A")
@@ -113,23 +99,86 @@ class GeminiService:
         conn.close()
         return saved_questions
 
-    def grade_assessment(self, student_id: int, skill_name: str, submitted_answers: dict):
+    def _get_offline_bank(self, skill_name: str, level: str):
+        """Curated 10-question technical banks for Python and general tech by level."""
+        skill_lower = skill_name.lower()
+
+        # PYTHON BANKS
+        if 'python' in skill_lower:
+            if level == 'beginner':
+                return [
+                    {"question_text": "Which of the following is an immutable data type in Python?", "options": {"A": "List", "B": "Tuple", "C": "Set", "D": "Dictionary"}, "correct_answer": "B"},
+                    {"question_text": "What will type(7 / 2) return in Python 3?", "options": {"A": "int", "B": "float", "C": "double", "D": "number"}, "correct_answer": "B"},
+                    {"question_text": "Which keyword is used to define a function in Python?", "options": {"A": "func", "B": "function", "C": "def", "D": "define"}, "correct_answer": "C"},
+                    {"question_text": "Which method removes and returns the last item from a list?", "options": {"A": ".pop()", "B": ".remove()", "C": ".delete()", "D": ".pull()"}, "correct_answer": "A"},
+                    {"question_text": "What will len('Hello World') evaluate to?", "options": {"A": "10", "B": "11", "C": "12", "D": "9"}, "correct_answer": "B"},
+                    {"question_text": "Which operator is used for exponentiation (power) in Python?", "options": {"A": "^", "B": "**", "C": "exp()", "D": "^^"}, "correct_answer": "B"},
+                    {"question_text": "How do you create an empty dictionary in Python?", "options": {"A": "[]", "B": "()", "C": "{}", "D": "set()"}, "correct_answer": "C"},
+                    {"question_text": "What will list(range(1, 5)) produce?", "options": {"A": "[1, 2, 3, 4, 5]", "B": "[1, 2, 3, 4]", "C": "[0, 1, 2, 3, 4]", "D": "[2, 3, 4, 5]"}, "correct_answer": "B"},
+                    {"question_text": "Which block is used to catch and handle exceptions in Python?", "options": {"A": "try-catch", "B": "try-except", "C": "try-handle", "D": "catch-finally"}, "correct_answer": "B"},
+                    {"question_text": "What is the recommended statement for opening files safely so they close automatically?", "options": {"A": "open file as f", "B": "with open(...) as f:", "C": "file.open()", "D": "using open(...) as f:"}, "correct_answer": "B"}
+                ]
+            elif level == 'advanced':
+                return [
+                    {"question_text": "What is the primary role of Python's Global Interpreter Lock (GIL) in CPython?", "options": {"A": "Accelerates vector math", "B": "Guarantees thread-safe memory management for non-atomic refcounts", "C": "Enables distributed GPU training", "D": "Prevents memory fragmentation"}, "correct_answer": "B"},
+                    {"question_text": "Which pair of dunder methods must a class implement to operate as a context manager with 'with'?", "options": {"A": "__start__ and __stop__", "B": "__enter__ and __exit__", "C": "__open__ and __close__", "D": "__acquire__ and __release__"}, "correct_answer": "B"},
+                    {"question_text": "What is the primary memory optimization provided by defining __slots__ in a class?", "options": {"A": "Forces compilation to C struct", "B": "Prevents creation of the instance __dict__ to minimize RAM", "C": "Makes all attributes read-only", "D": "Enforces static type checking"}, "correct_answer": "B"},
+                    {"question_text": "Which algorithm does Python use to compute Method Resolution Order (MRO) in multiple inheritance?", "options": {"A": "Depth First Search", "B": "Dijkstra's Shortest Path", "C": "C3 Linearization", "D": "Breadth First Graph Search"}, "correct_answer": "C"},
+                    {"question_text": "What is a Python Metaclass?", "options": {"A": "An abstract base class", "B": "A class whose instances are classes, defining class construction behavior", "C": "A module-level decorator", "D": "A multiprocessing wrapper"}, "correct_answer": "B"},
+                    {"question_text": "How does asyncio.gather(*tasks) coordinate coroutines?", "options": {"A": "Executes them concurrently on the single-threaded event loop", "B": "Spawns kernel OS processes", "C": "Compiles bytecode to native assembly", "D": "Executes them synchronously one by one"}, "correct_answer": "A"},
+                    {"question_text": "How does Python detect cyclic references that standard reference counting cannot collect?", "options": {"A": "By crashing on out-of-memory", "B": "Through generational cyclic garbage collection tracking reachable container pointers", "C": "By forcing OS page swaps", "D": "By deallocating globals on exit only"}, "correct_answer": "B"},
+                    {"question_text": "What methods define the Python Descriptor Protocol for attribute access control?", "options": {"A": "__get__, __set__, and __delete__", "B": "__read__, __write__, and __flush__", "C": "__load__ and __dump__", "D": "__attr__ and __setattr__"}, "correct_answer": "A"},
+                    {"question_text": "In Python 3.7+, what happens if a generator function raises StopIteration internally?", "options": {"A": "It is silently ignored", "B": "It is transformed into a RuntimeError to prevent masking loop termination", "C": "The generator restarts from line 1", "D": "It yields None forever"}, "correct_answer": "B"},
+                    {"question_text": "Which standard library module provides deterministic profiling of function execution time and call counts?", "options": {"A": "tracemalloc", "B": "cProfile", "C": "dis", "D": "timeit"}, "correct_answer": "B"}
+                ]
+            else: # Intermediate (default)
+                return [
+                    {"question_text": "What is the output of [x**2 for x in range(5) if x % 2 == 0]?", "options": {"A": "[0, 4, 16]", "B": "[1, 9]", "C": "[0, 1, 4, 9, 16]", "D": "[4, 16]"}, "correct_answer": "A"},
+                    {"question_text": "In a function definition, what does *args allow you to accept?", "options": {"A": "Arbitrary keyword arguments", "B": "An arbitrary number of positional arguments", "C": "Pointer addresses", "D": "Type annotations"}, "correct_answer": "B"},
+                    {"question_text": "In Python OOP, what is the role of super().__init__()?", "options": {"A": "Destroys previous instances", "B": "Calls the initializer of the superclass", "C": "Creates a static variable", "D": "Initializes a thread"}, "correct_answer": "B"},
+                    {"question_text": "What is the key advantage of a generator expression over a list comprehension?", "options": {"A": "Generators evaluate lazily, consuming minimal memory", "B": "Generators can be indexed directly", "C": "Generators support slicing", "D": "Generators run faster for small arrays"}, "correct_answer": "A"},
+                    {"question_text": "What does the @staticmethod decorator indicate in a class?", "options": {"A": "The method cannot be overridden", "B": "The method takes no self or cls parameter and behaves like a plain function", "C": "The method modifies class state", "D": "The method is executed on import"}, "correct_answer": "B"},
+                    {"question_text": "What will dict.get('score', 100) return if 'score' does not exist in the dictionary?", "options": {"A": "KeyError", "B": "None", "C": "100", "D": "0"}, "correct_answer": "C"},
+                    {"question_text": "How does copy.deepcopy() differ from copy.copy()?", "options": {"A": "deepcopy is faster", "B": "deepcopy recursively clones nested compound objects", "C": "deepcopy works only on strings", "D": "shallow copy creates new memory for every inner item"}, "correct_answer": "B"},
+                    {"question_text": "What does the boilerplate if __name__ == '__main__': prevent?", "options": {"A": "Syntax errors", "B": "Executing top-level script logic when the file is imported as a module", "C": "Infinite loops", "D": "Permission denied errors"}, "correct_answer": "B"},
+                    {"question_text": "Which dunder method is called when str(object) or print(object) is invoked for human reading?", "options": {"A": "__repr__", "B": "__str__", "C": "__format__", "D": "__bytes__"}, "correct_answer": "B"},
+                    {"question_text": "What is the return type of zip([1, 2], ['a', 'b']) in Python 3?", "options": {"A": "A list of lists", "B": "An iterator yielding tuples", "C": "A dictionary", "D": "A set of pairs"}, "correct_answer": "B"}
+                ]
+
+        # GENERAL SKILL / OTHER TECH BANK (10 questions by level)
+        return [
+            {"question_text": f"Which foundational principle is core to {skill_name} at the {level} level?", "options": {"A": "Writing clean, modular, and maintainable logic", "B": "Bypassing version control", "C": "Hardcoding configuration values", "D": "Ignoring edge cases"}, "correct_answer": "A"},
+            {"question_text": f"What is the standard approach to handling unexpected errors in {skill_name}?", "options": {"A": "Letting the process crash", "B": "Catching specific exceptions, logging details, and graceful degradation", "C": "Suppressing all error messages", "D": "Restarting the computer"}, "correct_answer": "B"},
+            {"question_text": f"Why is unit testing important when writing code in {skill_name}?", "options": {"A": "To increase file size", "B": "To verify individual components work in isolation and prevent regressions", "C": "To slow down deployment", "D": "To replace documentation"}, "correct_answer": "B"},
+            {"question_text": f"Which data structure offers average O(1) time complexity for key lookups in {skill_name}?", "options": {"A": "Linked List", "B": "Binary Search Tree", "C": "Hash Map / Hash Table", "D": "Array"}, "correct_answer": "C"},
+            {"question_text": f"What is the role of Git and version control when collaborating on {skill_name} projects?", "options": {"A": "Running automated tests only", "B": "Tracking incremental changes, managing branches, and resolving merge conflicts", "C": "Hosting production databases", "D": "Encrypting code"}, "correct_answer": "B"},
+            {"question_text": f"When scaling an application built with {skill_name}, what is the best practice for storing secrets?", "options": {"A": "Committing them to public GitHub", "B": "Using environment variables (.env) kept outside source control", "C": "Writing them in plain text README", "D": "Embedding in client bundle"}, "correct_answer": "B"},
+            {"question_text": f"What is an idempotent operation in API design related to {skill_name}?", "options": {"A": "An operation that can be applied multiple times without changing the result beyond the initial application", "B": "An operation that never succeeds", "C": "An asynchronous thread", "D": "A database migration"}, "correct_answer": "A"},
+            {"question_text": f"Which protocol ensures secure, encrypted data transmission over the web for {skill_name} services?", "options": {"A": "HTTP", "B": "FTP", "C": "HTTPS (TLS/SSL)", "D": "Telnet"}, "correct_answer": "C"},
+            {"question_text": f"What is the primary benefit of caching frequently queried data in {skill_name}?", "options": {"A": "Increases memory leaks", "B": "Reduces database load and drastically lowers latency", "C": "Guarantees zero downtime", "D": "Replaces the main database"}, "correct_answer": "B"},
+            {"question_text": f"What does CI/CD stand for in modern {skill_name} software delivery pipelines?", "options": {"A": "Code Inspection / Code Design", "B": "Continuous Integration / Continuous Delivery", "C": "Central Index / Central Database", "D": "Client Interface / Client Device"}, "correct_answer": "B"}
+        ]
+
+    def grade_assessment(self, student_id: int, skill_name: str, submitted_answers: dict, total_questions: int = 10):
         """Grades student answers, calculates percentage, and records verified score in SQLite."""
         normalized_skill = skill_name.strip().title()
         if not submitted_answers:
-            return {"error": "No answers submitted."}
+            return {"error": "No answers submitted.", "verified_percentage": 0, "correct_answers": 0, "total_questions": total_questions}
 
         conn = get_db()
         cursor = conn.cursor()
         correct_count = 0
-        total_questions = len(submitted_answers)
+        total = max(int(total_questions) if total_questions else 10, len(submitted_answers), 1)
         for q_id_str, student_choice in submitted_answers.items():
-            cursor.execute("SELECT correct_answer FROM test_questions WHERE id = ?", (int(q_id_str),))
-            row = cursor.fetchone()
-            if row and row['correct_answer'].upper() == str(student_choice).strip().upper():
-                correct_count += 1
+            try:
+                cursor.execute("SELECT correct_answer FROM test_questions WHERE id = ?", (int(q_id_str),))
+                row = cursor.fetchone()
+                if row and row['correct_answer'].upper() == str(student_choice).strip().upper():
+                    correct_count += 1
+            except Exception:
+                continue
 
-        percentage = round((correct_count / total_questions) * 100.0, 2)
+        percentage = round((correct_count / total) * 100.0, 1)
         cursor.execute(
             """
             INSERT INTO student_skill_scores (student_id, skill_name, percentage, assessed_at)
@@ -144,10 +193,10 @@ class GeminiService:
         conn.close()
         return {
             'skill_name': normalized_skill,
-            'total_questions': total_questions,
+            'total_questions': total,
             'correct_answers': correct_count,
             'verified_percentage': percentage,
-            'status': 'verified'
+            'status': 'verified' if percentage >= 70 else 'needs_practice'
         }
 
     # =========================================================================

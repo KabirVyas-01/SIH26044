@@ -34,14 +34,14 @@ export const studentApi = {
     return request('/api/student/applications');
   },
 
-  async getSkillQuestions(skillName: string): Promise<{ skill: string; questions: BackendAssessmentQuestion[] }> {
-    return request(`/api/student/assessments/${encodeURIComponent(skillName)}/questions`);
+  async getSkillQuestions(skillName: string, level: string = 'intermediate', count: number = 10): Promise<{ skill: string; level?: string; questions: BackendAssessmentQuestion[] }> {
+    return request(`/api/student/assessments/${encodeURIComponent(skillName)}/questions?level=${encodeURIComponent(level)}&count=${count}`);
   },
 
-  async submitSkillTest(skillName: string, answers: Record<string, string>): Promise<{ message: string; result: any }> {
+  async submitSkillTest(skillName: string, answers: Record<string, string>, totalQuestions: number = 10): Promise<{ message: string; result: any }> {
     return request(`/api/student/assessments/${encodeURIComponent(skillName)}/submit`, {
       method: 'POST',
-      body: JSON.stringify({ answers }),
+      body: JSON.stringify({ answers, total_questions: totalQuestions }),
     });
   },
 
