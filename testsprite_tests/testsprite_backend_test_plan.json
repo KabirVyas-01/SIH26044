@@ -1,0 +1,52 @@
+[
+  {
+    "id": "TC001",
+    "title": "student_registration_api",
+    "description": "Verify that a new student can successfully register by sending a POST request to /api/auth/students/signup with valid registration details and receive a success response."
+  },
+  {
+    "id": "TC002",
+    "title": "student_login_api",
+    "description": "Verify that an existing student can log in by sending a POST request to /api/auth/students/login with valid credentials and receive authentication tokens and access to the student portal."
+  },
+  {
+    "id": "TC003",
+    "title": "industry_login_api",
+    "description": "Verify that an industry partner can log in by sending a POST request to /api/auth/industry/login with valid credentials and gain access to the industry portal."
+  },
+  {
+    "id": "TC004",
+    "title": "academician_login_api",
+    "description": "Verify that an academician can log in by sending a POST request to /api/auth/academician/login with valid credentials and gain access to the academician portal."
+  },
+  {
+    "id": "TC005",
+    "title": "institute_login_api",
+    "description": "Verify that an institute representative can log in by sending a POST request to /api/auth/institute/login with valid credentials and gain access to the university portal."
+  },
+  {
+    "id": "TC006",
+    "title": "student_profile_management_api",
+    "description": "Verify that a student can retrieve their profile details with a GET request to /api/student/profile and update their profile with a PUT request to the same endpoint, and changes are saved correctly."
+  },
+  {
+    "id": "TC007",
+    "title": "browse_postings_api",
+    "description": "Verify that a student can retrieve a list of available postings by sending a GET request to /api/student/postings and can apply to a posting by sending a POST request to /api/student/apply."
+  },
+  {
+    "id": "TC008",
+    "title": "student_applications_tracker_api",
+    "description": "Verify that a student can view the status of their applications by sending a GET request to /api/student/applications and receive accurate status information."
+  },
+  {
+    "id": "TC009",
+    "title": "industry_post_opportunity_api",
+    "description": "Verify that an industry partner can create a new posting by sending a POST request to /api/industry/postings with valid posting details and see the posting listed."
+  },
+  {
+    "id": "TC010",
+    "title": "logout_api",
+    "description": "Verify that an authenticated user can log out by sending a POST request to /api/auth/logout and that the session is cleared and user is redirected to the landing page."
+  }
+]

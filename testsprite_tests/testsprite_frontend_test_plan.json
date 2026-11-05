@@ -1,0 +1,1358 @@
+[
+  {
+    "id": "TC001",
+    "title": "Student logs in and lands in the student portal",
+    "description": "This verifies that an existing student can log in successfully and reaches the student portal after authentication.",
+    "category": "Role-based authentication",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Open the authentication flow"
+      },
+      {
+        "type": "action",
+        "description": "Choose the student role"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the login details with valid student credentials"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the student portal is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC002",
+    "title": "Student signs up and lands in the student portal",
+    "description": "This verifies that a new student can register successfully and is routed into the student portal after sign up.",
+    "category": "Role-based authentication",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Open the authentication flow"
+      },
+      {
+        "type": "action",
+        "description": "Choose the student role"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the registration details with valid student information"
+      },
+      {
+        "type": "action",
+        "description": "Submit the registration form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the student portal is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC003",
+    "title": "Logged-in user can log out and return to the landing page",
+    "description": "This verifies that an authenticated user can end the session and return to the landing page.",
+    "category": "Role-based authentication",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Open the authentication flow"
+      },
+      {
+        "type": "action",
+        "description": "Choose the student role"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the login details with valid student credentials"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Choose to log out"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the landing page is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC004",
+    "title": "Industry partner signs up and lands in the industry portal",
+    "description": "This verifies that a new industry partner can register successfully and is routed into the industry portal after sign up.",
+    "category": "Role-based authentication",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Open the authentication flow"
+      },
+      {
+        "type": "action",
+        "description": "Choose the industry role"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the registration details with valid industry partner information"
+      },
+      {
+        "type": "action",
+        "description": "Submit the registration form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the industry portal is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC005",
+    "title": "Academician signs up and lands in the academician portal",
+    "description": "This verifies that a new academician can register successfully and is routed into the academician portal after sign up.",
+    "category": "Role-based authentication",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Open the authentication flow"
+      },
+      {
+        "type": "action",
+        "description": "Choose the academician role"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the registration details with valid academician information"
+      },
+      {
+        "type": "action",
+        "description": "Submit the registration form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the academician portal is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC006",
+    "title": "Institute representative signs up and lands in the university portal",
+    "description": "This verifies that a new institute representative can register successfully and is routed into the university portal after sign up.",
+    "category": "Role-based authentication",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Open the authentication flow"
+      },
+      {
+        "type": "action",
+        "description": "Choose the institute role"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the registration details with valid institute representative information"
+      },
+      {
+        "type": "action",
+        "description": "Submit the registration form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the university portal is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC007",
+    "title": "Student applies to a posting and sees it in applications",
+    "description": "This verifies that a student can submit an application to a posting and later see the application listed in their applications view.",
+    "category": "Opportunity browsing and application",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Open the authentication flow"
+      },
+      {
+        "type": "action",
+        "description": "Choose the student role"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the login details with valid student credentials"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open the postings view"
+      },
+      {
+        "type": "action",
+        "description": "Select a posting to review"
+      },
+      {
+        "type": "action",
+        "description": "Apply to the posting"
+      },
+      {
+        "type": "action",
+        "description": "Open the applications list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the application is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC008",
+    "title": "Create and review an industry posting end to end",
+    "description": "An industry partner can create a posting and then confirm it appears in the postings list.",
+    "category": "Industry posting management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill in {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open the industry portal"
+      },
+      {
+        "type": "action",
+        "description": "Open the posting creation flow"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the posting details and required skills"
+      },
+      {
+        "type": "action",
+        "description": "Submit the posting form"
+      },
+      {
+        "type": "action",
+        "description": "Open the postings view"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the new posting is displayed in the industry postings list"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC009",
+    "title": "Verify a student account",
+    "description": "An institute representative can review a student account and verify it successfully from the students view.",
+    "category": "Institute student verification and statistics",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the university portal"
+      },
+      {
+        "type": "action",
+        "description": "Open the students view"
+      },
+      {
+        "type": "action",
+        "description": "Select a pending student account"
+      },
+      {
+        "type": "action",
+        "description": "Verify the student account"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the student's verification status is updated"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC010",
+    "title": "Create an industry posting",
+    "description": "An industry partner can submit a new opportunity and see it appear in their postings list.",
+    "category": "Industry posting management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill in {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open the industry portal"
+      },
+      {
+        "type": "action",
+        "description": "Open the posting creation flow"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the posting details and required skills"
+      },
+      {
+        "type": "action",
+        "description": "Submit the posting form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the new posting is displayed in the industry postings list"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC011",
+    "title": "Student browses opportunities and views a posting",
+    "description": "This verifies that a student can open the postings view, browse available opportunities, and review a selected posting's details.",
+    "category": "Opportunity browsing and application",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Open the authentication flow"
+      },
+      {
+        "type": "action",
+        "description": "Choose the student role"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the login details with valid student credentials"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open the postings view"
+      },
+      {
+        "type": "action",
+        "description": "Select a posting to review"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the posting details are displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC012",
+    "title": "Update an applicant status",
+    "description": "An industry partner can change an applicant from the applications view and see the updated status persist in the UI.",
+    "category": "Industry applicant review",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill in {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open the industry portal"
+      },
+      {
+        "type": "action",
+        "description": "Open the applications view"
+      },
+      {
+        "type": "action",
+        "description": "Review applicants for a posting"
+      },
+      {
+        "type": "action",
+        "description": "Change an applicant's status to shortlisted"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the updated application status is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC013",
+    "title": "Student updates profile details successfully",
+    "description": "This verifies that a student can update skills and professional links in the profile and see the saved information reflected afterward.",
+    "category": "Student profile management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Open the authentication flow"
+      },
+      {
+        "type": "action",
+        "description": "Choose the student role"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the login details with valid student credentials"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open the profile view"
+      },
+      {
+        "type": "action",
+        "description": "Update the skills and professional links with valid new information"
+      },
+      {
+        "type": "action",
+        "description": "Save the changes"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the updated profile information is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC014",
+    "title": "Track submitted applications",
+    "description": "A student can open the applications view and see the current status of submitted applications.",
+    "category": "Student application tracking",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the login field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open the applications view"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify submitted applications are displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify application statuses are displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC015",
+    "title": "Create an academic opportunity posting",
+    "description": "An academician can submit a new opportunity and see it appear in their posted opportunities list.",
+    "category": "Academician opportunity posting and mentorship",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the academician portal"
+      },
+      {
+        "type": "action",
+        "description": "Open the posting creation flow"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the opportunity title field with a unique title"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the opportunity details field with a meaningful description"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the required skills field with relevant skills"
+      },
+      {
+        "type": "action",
+        "description": "Submit the posting"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the new opportunity posting is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC016",
+    "title": "Review applicants for an industry posting",
+    "description": "An industry partner can open an application list for one of their postings and see applicant entries.",
+    "category": "Industry applicant review",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill in {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open the industry portal"
+      },
+      {
+        "type": "action",
+        "description": "Open the applications view"
+      },
+      {
+        "type": "action",
+        "description": "Review applicants for a posting"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify applicant entries are displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the application list is not empty"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC017",
+    "title": "Move an applicant to a final status",
+    "description": "An industry partner can mark an applicant as rejected or selected and confirm the new status is shown after the change.",
+    "category": "Industry applicant review",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill in {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open the industry portal"
+      },
+      {
+        "type": "action",
+        "description": "Open the applications view"
+      },
+      {
+        "type": "action",
+        "description": "Review applicants for a posting"
+      },
+      {
+        "type": "action",
+        "description": "Change an applicant's status to selected"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the updated application status is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC018",
+    "title": "Student updates preferred role and resume details successfully",
+    "description": "This verifies that a student can change role or resume information in the profile and see the saved profile update afterward.",
+    "category": "Student profile management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Open the authentication flow"
+      },
+      {
+        "type": "action",
+        "description": "Choose the student role"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the login details with valid student credentials"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open the profile view"
+      },
+      {
+        "type": "action",
+        "description": "Update the preferred role and resume details with valid new information"
+      },
+      {
+        "type": "action",
+        "description": "Save the changes"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the updated profile information is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC019",
+    "title": "Reject a student verification request",
+    "description": "An institute representative can reject a pending student account and see the rejected status reflected in the students view.",
+    "category": "Institute student verification and statistics",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the university portal"
+      },
+      {
+        "type": "action",
+        "description": "Open the students view"
+      },
+      {
+        "type": "action",
+        "description": "Select a pending student account"
+      },
+      {
+        "type": "action",
+        "description": "Reject the student verification request"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the student's verification status is updated"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC020",
+    "title": "View created industry postings",
+    "description": "An industry partner can open their postings view and review the opportunities they have created.",
+    "category": "Industry posting management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill in {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open the industry portal"
+      },
+      {
+        "type": "action",
+        "description": "Open the postings view"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify created postings are displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the postings list is not empty"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC021",
+    "title": "Create a posting with all required opportunity details",
+    "description": "An academician can create a posting that includes the key details needed for students to evaluate the opportunity.",
+    "category": "Academician opportunity posting and mentorship",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the academician portal"
+      },
+      {
+        "type": "action",
+        "description": "Open the posting creation flow"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the opportunity title field with a unique title"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the opportunity details field with a meaningful description"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the required skills field with relevant skills"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the opportunity type field with a valid opportunity type"
+      },
+      {
+        "type": "action",
+        "description": "Submit the posting"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the posting is listed with its submitted details"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the new opportunity posting is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC022",
+    "title": "Take a skill assessment test",
+    "description": "A student can choose a skill, answer the generated questions, submit the test, and see the assessed score.",
+    "category": "AI skill assessment",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the login field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open the skill assessment section"
+      },
+      {
+        "type": "action",
+        "description": "Choose a skill to test"
+      },
+      {
+        "type": "action",
+        "description": "Answer the generated questions"
+      },
+      {
+        "type": "action",
+        "description": "Submit the test"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a skill score is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the test results are displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC023",
+    "title": "View affiliated students for mentorship",
+    "description": "An academician can open the affiliated students view and see students associated with their institute.",
+    "category": "Academician opportunity posting and mentorship",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the academician portal"
+      },
+      {
+        "type": "action",
+        "description": "Open the affiliated students view"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify affiliated students are displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC024",
+    "title": "Student reviews the current profile information",
+    "description": "This verifies that a student can open the profile view and review the saved profile details.",
+    "category": "Student profile management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Open the authentication flow"
+      },
+      {
+        "type": "action",
+        "description": "Choose the student role"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the login details with valid student credentials"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open the profile view"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the current profile information is displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC025",
+    "title": "Review verification statistics",
+    "description": "An institute representative can open the statistics view and see the institute's verification totals.",
+    "category": "Institute student verification and statistics",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the university portal"
+      },
+      {
+        "type": "action",
+        "description": "Open the statistics view"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify total students are displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify verified and pending verification counts are displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC026",
+    "title": "Review resume feedback",
+    "description": "A student can submit resume content and receive an AI score with feedback for improvement.",
+    "category": "AI resume review",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the login field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open the resume review section"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the resume content field with a complete student resume summary"
+      },
+      {
+        "type": "action",
+        "description": "Submit the resume for review"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a resume score is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify resume feedback is displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC027",
+    "title": "Submit mentorship feedback for a student",
+    "description": "An academician can select an affiliated student and save mentorship feedback for that student.",
+    "category": "Academician opportunity posting and mentorship",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the academician portal"
+      },
+      {
+        "type": "action",
+        "description": "Open the affiliated students view"
+      },
+      {
+        "type": "action",
+        "description": "Select a student from the affiliated students list"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the mentorship feedback field with helpful feedback"
+      },
+      {
+        "type": "action",
+        "description": "Submit the mentorship feedback"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the feedback is recorded for the selected student"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC028",
+    "title": "Student views AI skill gap analysis for a posting",
+    "description": "This verifies that a student can open skill gap analysis for a posting and review the fit score and gap summary.",
+    "category": "Opportunity browsing and application",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Open the authentication flow"
+      },
+      {
+        "type": "action",
+        "description": "Choose the student role"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the login details with valid student credentials"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open the postings view"
+      },
+      {
+        "type": "action",
+        "description": "Select a posting to review"
+      },
+      {
+        "type": "action",
+        "description": "Open the skill gap analysis for that posting"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the fit score and gap summary are displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC029",
+    "title": "Review saved skill scores",
+    "description": "A student can open the skill scores view and review previously assessed scores for multiple skills.",
+    "category": "AI skill assessment",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the login field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open the skill scores view"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify previously assessed skill scores are displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify multiple skill entries are displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC030",
+    "title": "Student views AI course recommendations for a posting",
+    "description": "This verifies that a student can open course recommendations for a posting and review the suggested courses.",
+    "category": "Opportunity browsing and application",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Open the authentication flow"
+      },
+      {
+        "type": "action",
+        "description": "Choose the student role"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the login details with valid student credentials"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open the postings view"
+      },
+      {
+        "type": "action",
+        "description": "Select a posting to review"
+      },
+      {
+        "type": "action",
+        "description": "Open the course recommendations for that posting"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the suggested courses are displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC031",
+    "title": "Submit mentorship feedback from a student detail view",
+    "description": "An academician can review a student and record feedback that remains visible after submission.",
+    "category": "Academician opportunity posting and mentorship",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the academician portal"
+      },
+      {
+        "type": "action",
+        "description": "Open the affiliated students view"
+      },
+      {
+        "type": "action",
+        "description": "Select a student from the affiliated students list"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the mentorship feedback field with actionable feedback"
+      },
+      {
+        "type": "action",
+        "description": "Submit the mentorship feedback"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the selected student's feedback is displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC032",
+    "title": "View an empty applications state",
+    "description": "A student with no submitted applications can open the applications view and see an empty state instead of a list.",
+    "category": "Student application tracking",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the login field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open the applications view"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an empty state message is visible"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC033",
+    "title": "Review affiliated students when none are available",
+    "description": "An academician can open the affiliated students view and see an empty state when no students are available.",
+    "category": "Academician opportunity posting and mentorship",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the academician portal"
+      },
+      {
+        "type": "action",
+        "description": "Open the affiliated students view"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an empty state message is visible"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC034",
+    "title": "Handle an empty applications list",
+    "description": "An industry partner can open the applications view and see an empty state when no applicants are available.",
+    "category": "Industry applicant review",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill in {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open the industry portal"
+      },
+      {
+        "type": "action",
+        "description": "Open the applications view"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an empty state message is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify no applicant entries are displayed"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC035",
+    "title": "Handle an empty pending-students list",
+    "description": "An institute representative can open the students view and see an empty state when no students need review.",
+    "category": "Institute student verification and statistics",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the university portal"
+      },
+      {
+        "type": "action",
+        "description": "Open the students view"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an empty state message is visible"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC036",
+    "title": "Review a blank resume submission",
+    "description": "A student who submits empty resume content sees a validation message and no review result is shown.",
+    "category": "AI resume review",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the login field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open the resume review section"
+      },
+      {
+        "type": "action",
+        "description": "Submit the resume for review"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a validation error is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a resume score is not displayed"
+      }
+    ],
+    "priority": "Low"
+  }
+]

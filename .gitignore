@@ -23,3 +23,5 @@ Thumbs.db
 *.log
 *.tmp
 *.zip
+testsprite_tests/tmp/
+testsprite_tests/tmp/config.json
